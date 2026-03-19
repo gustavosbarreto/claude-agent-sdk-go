@@ -158,9 +158,17 @@ func BuildArgs(cfg Config) []string {
 	}
 
 	if cfg.OutputFormat != nil {
-		// Only send the schema part, the flag is --json-schema.
+		// --json-schema expects the raw schema, not the {type, schema} wrapper.
+		// Extract the "schema" field if present, otherwise pass as-is.
 		if data, err := json.Marshal(cfg.OutputFormat); err == nil {
-			args = append(args, "--json-schema", string(data))
+			var wrapper struct {
+				Schema json.RawMessage `json:"schema"`
+			}
+			if json.Unmarshal(data, &wrapper) == nil && len(wrapper.Schema) > 0 {
+				args = append(args, "--json-schema", string(wrapper.Schema))
+			} else {
+				args = append(args, "--json-schema", string(data))
+			}
 		}
 	}
 
