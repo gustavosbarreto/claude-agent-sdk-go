@@ -1,0 +1,140 @@
+{
+  "_comment": "Conformance test fixtures extracted from anthropics/claude-agent-sdk-python tests/test_message_parser.py",
+  "cases": [
+    {
+      "name": "user_message_text",
+      "input": {"type": "user", "message": {"content": [{"type": "text", "text": "Hello"}]}},
+      "expect_type": "user"
+    },
+    {
+      "name": "user_message_with_uuid",
+      "input": {"type": "user", "uuid": "msg-abc123-def456", "message": {"content": [{"type": "text", "text": "Hello"}]}},
+      "expect_type": "user"
+    },
+    {
+      "name": "user_message_with_tool_use",
+      "input": {"type": "user", "message": {"content": [{"type": "text", "text": "Let me read this file"}, {"type": "tool_use", "id": "tool_456", "name": "Read", "input": {"file_path": "/example.txt"}}]}},
+      "expect_type": "user"
+    },
+    {
+      "name": "user_message_with_tool_result",
+      "input": {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "tool_789", "content": "File contents here"}]}},
+      "expect_type": "user"
+    },
+    {
+      "name": "user_message_with_tool_result_error",
+      "input": {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "tool_error", "content": "File not found", "is_error": true}]}},
+      "expect_type": "user"
+    },
+    {
+      "name": "user_message_inside_subagent",
+      "input": {"type": "user", "message": {"content": [{"type": "text", "text": "Hello"}]}, "parent_tool_use_id": "toolu_01Xrwd5Y13sEHtzScxR77So8"},
+      "expect_type": "user"
+    },
+    {
+      "name": "user_message_with_tool_use_result",
+      "input": {"type": "user", "message": {"role": "user", "content": [{"tool_use_id": "toolu_vrtx_01KXWexk3NJdwkjWzPMGQ2F1", "type": "tool_result", "content": "The file has been updated."}]}, "parent_tool_use_id": null, "session_id": "84afb479-17ae-49af-8f2b-666ac2530c3a", "uuid": "2ace3375-1879-48a0-a421-6bce25a9295a", "tool_use_result": {"filePath": "/path/to/file.py", "oldString": "old code", "newString": "new code"}},
+      "expect_type": "user"
+    },
+    {
+      "name": "assistant_message_text_and_tool",
+      "input": {"type": "assistant", "message": {"content": [{"type": "text", "text": "Hello"}, {"type": "tool_use", "id": "tool_123", "name": "Read", "input": {"file_path": "/test.txt"}}], "model": "claude-opus-4-1-20250805"}},
+      "expect_type": "assistant"
+    },
+    {
+      "name": "assistant_message_with_thinking",
+      "input": {"type": "assistant", "message": {"content": [{"type": "thinking", "thinking": "I'm thinking about the answer...", "signature": "sig-123"}, {"type": "text", "text": "Here's my response"}], "model": "claude-opus-4-1-20250805"}},
+      "expect_type": "assistant"
+    },
+    {
+      "name": "assistant_message_with_usage",
+      "input": {"type": "assistant", "message": {"content": [{"type": "text", "text": "hi"}], "model": "claude-opus-4-5", "usage": {"input_tokens": 100, "output_tokens": 50, "cache_read_input_tokens": 2000, "cache_creation_input_tokens": 500}}},
+      "expect_type": "assistant"
+    },
+    {
+      "name": "assistant_message_inside_subagent",
+      "input": {"type": "assistant", "message": {"content": [{"type": "text", "text": "Hello"}], "model": "claude-opus-4-1-20250805"}, "parent_tool_use_id": "toolu_01Xrwd5Y13sEHtzScxR77So8"},
+      "expect_type": "assistant"
+    },
+    {
+      "name": "assistant_message_with_auth_error",
+      "input": {"type": "assistant", "message": {"content": [{"type": "text", "text": "Invalid API key"}], "model": "<synthetic>"}, "session_id": "test-session", "error": "authentication_failed"},
+      "expect_type": "assistant"
+    },
+    {
+      "name": "assistant_message_with_rate_limit_error",
+      "input": {"type": "assistant", "message": {"content": [{"type": "text", "text": "Rate limit exceeded"}], "model": "<synthetic>"}, "error": "rate_limit"},
+      "expect_type": "assistant"
+    },
+    {
+      "name": "system_message_init",
+      "input": {"type": "system", "subtype": "init", "session_id": "test-123", "model": "claude-sonnet-4-6"},
+      "expect_type": "system",
+      "expect_subtype": "init"
+    },
+    {
+      "name": "result_success",
+      "input": {"type": "result", "subtype": "success", "duration_ms": 1000, "duration_api_ms": 500, "is_error": false, "num_turns": 2, "session_id": "session_123"},
+      "expect_type": "result",
+      "expect_subtype": "success"
+    },
+    {
+      "name": "result_with_stop_reason",
+      "input": {"type": "result", "subtype": "success", "duration_ms": 1000, "duration_api_ms": 500, "is_error": false, "num_turns": 2, "session_id": "session_123", "stop_reason": "end_turn", "result": "Done"},
+      "expect_type": "result",
+      "expect_subtype": "success"
+    },
+    {
+      "name": "result_max_turns",
+      "input": {"type": "result", "subtype": "error_max_turns", "duration_ms": 1000, "duration_api_ms": 500, "is_error": true, "num_turns": 10, "session_id": "session_123", "stop_reason": null},
+      "expect_type": "result",
+      "expect_subtype": "error_max_turns"
+    },
+    {
+      "name": "task_started",
+      "input": {"type": "system", "subtype": "task_started", "task_id": "task-abc", "tool_use_id": "toolu_01", "description": "Reticulating splines", "task_type": "background", "uuid": "uuid-1", "session_id": "session-1"},
+      "expect_type": "system",
+      "expect_subtype": "task_started"
+    },
+    {
+      "name": "task_started_minimal",
+      "input": {"type": "system", "subtype": "task_started", "task_id": "task-abc", "description": "Working", "uuid": "uuid-1", "session_id": "session-1"},
+      "expect_type": "system",
+      "expect_subtype": "task_started"
+    },
+    {
+      "name": "task_progress",
+      "input": {"type": "system", "subtype": "task_progress", "task_id": "task-abc", "tool_use_id": "toolu_01", "description": "Halfway there", "usage": {"total_tokens": 1234, "tool_uses": 5, "duration_ms": 9876}, "last_tool_name": "Read", "uuid": "uuid-2", "session_id": "session-1"},
+      "expect_type": "system",
+      "expect_subtype": "task_progress"
+    },
+    {
+      "name": "task_notification_completed",
+      "input": {"type": "system", "subtype": "task_notification", "task_id": "task-abc", "tool_use_id": "toolu_01", "status": "completed", "output_file": "/tmp/out.md", "summary": "All done", "usage": {"total_tokens": 2000, "tool_uses": 7, "duration_ms": 12345}, "uuid": "uuid-3", "session_id": "session-1"},
+      "expect_type": "system",
+      "expect_subtype": "task_notification"
+    },
+    {
+      "name": "task_notification_minimal",
+      "input": {"type": "system", "subtype": "task_notification", "task_id": "task-abc", "status": "failed", "output_file": "/tmp/out.md", "summary": "Boom", "uuid": "uuid-3", "session_id": "session-1"},
+      "expect_type": "system",
+      "expect_subtype": "task_notification"
+    },
+    {
+      "name": "rate_limit_event",
+      "input": {"type": "rate_limit_event", "rate_limit_info": {"status": "allowed_warning", "resetsAt": 1700000000, "rateLimitType": "five_hour", "utilization": 0.91}, "uuid": "abc-123", "session_id": "session_xyz"},
+      "expect_type": "rate_limit_event"
+    },
+    {
+      "name": "unknown_type",
+      "input": {"type": "unknown_future_type", "data": "hello"},
+      "expect_type": "unknown_future_type"
+    },
+    {
+      "name": "unknown_system_subtype",
+      "input": {"type": "system", "subtype": "some_future_subtype", "foo": "bar"},
+      "expect_type": "system",
+      "expect_subtype": "some_future_subtype"
+    }
+  ]
+}

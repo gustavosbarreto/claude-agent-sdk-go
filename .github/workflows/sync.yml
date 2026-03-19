@@ -1,0 +1,175 @@
+name: Sync with official Python SDK
+
+on:
+  schedule:
+    # Run daily at 06:00 UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch: # Manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Clone official Python SDK
+        run: |
+          git clone --depth 1 https://github.com/anthropics/claude-agent-sdk-python.git /tmp/claude-agent-sdk-python
+          echo "PYTHON_SDK_SHA=$(git -C /tmp/claude-agent-sdk-python rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      # --- Detection layer 1: conformance fixtures changed? ---
+      - name: Extract conformance fixtures
+        run: |
+          python3 scripts/extract-fixtures.py /tmp/claude-agent-sdk-python > testdata/conformance_new.json
+          if diff -q testdata/conformance.json testdata/conformance_new.json > /dev/null 2>&1; then
+            echo "FIXTURES_CHANGED=false" >> "$GITHUB_ENV"
+          else
+            echo "FIXTURES_CHANGED=true" >> "$GITHUB_ENV"
+            mv testdata/conformance_new.json testdata/conformance.json
+          fi
+
+      # --- Detection layer 2: do existing tests break? ---
+      - name: Run tests
+        id: test_before
+        continue-on-error: true
+        run: go test ./... -v -count=1 2>&1 | tee /tmp/test-output.txt
+
+      # --- Detection layer 3: type/hook/option coverage gaps? ---
+      - name: Check type coverage
+        id: coverage
+        continue-on-error: true
+        run: python3 scripts/check-coverage.py /tmp/claude-agent-sdk-python . 2>&1 | tee /tmp/coverage-output.txt
+
+      # --- Decision: is sync needed? ---
+      - name: Check if sync needed
+        id: check
+        run: |
+          TESTS_OK="${{ steps.test_before.outcome }}"
+          COVERAGE_OK="${{ steps.coverage.outcome }}"
+
+          if [ "$TESTS_OK" = "success" ] && [ "$COVERAGE_OK" = "success" ] && [ "$FIXTURES_CHANGED" = "false" ]; then
+            echo "All checks pass — nothing to do"
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Sync needed:"
+            echo "  tests=$TESTS_OK"
+            echo "  coverage=$COVERAGE_OK"
+            echo "  fixtures_changed=$FIXTURES_CHANGED"
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- Run Claude Code to fix ---
+      - name: Set up Claude Code
+        if: steps.check.outputs.needed == 'true'
+        uses: anthropics/setup-claude-code@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+      - name: Run Claude Code sync
+        if: steps.check.outputs.needed == 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          TEST_OUTPUT=$(tail -100 /tmp/test-output.txt)
+          COVERAGE_OUTPUT=$(cat /tmp/coverage-output.txt)
+
+          claude -p "/sync
+
+          Test failures:
+          $TEST_OUTPUT
+
+          Coverage gaps:
+          $COVERAGE_OUTPUT
+
+          Python SDK changelog (recent):
+          $(head -80 /tmp/claude-agent-sdk-python/CHANGELOG.md)" \
+            --model claude-sonnet-4-6 \
+            --allowedTools "Read,Write,Edit,Bash,Glob,Grep" \
+            --dangerously-skip-permissions \
+            --max-turns 30
+
+      # --- Verify fix ---
+      - name: Lint (after sync)
+        if: steps.check.outputs.needed == 'true'
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: Unit + Conformance tests (after sync)
+        if: steps.check.outputs.needed == 'true'
+        run: go test ./... -v -count=1 -race
+
+      - name: E2E tests (after sync)
+        if: steps.check.outputs.needed == 'true'
+        env:
+          CLAUDE_E2E: "1"
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: go test -v -count=1 -run TestE2E -timeout 5m
+
+      # --- Open PR ---
+      - name: Create PR
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No code changes produced"
+            exit 0
+          fi
+
+          BRANCH="sync/python-sdk-${PYTHON_SDK_SHA}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "$(cat <<'EOF'
+          sync: update Go SDK to match Python SDK ${{ env.PYTHON_SDK_SHA }}
+
+          Auto-synced by Claude Code from anthropics/claude-agent-sdk-python.
+          EOF
+          )"
+          git push -u origin "$BRANCH"
+
+          gh pr create \
+            --title "sync: update Go SDK to match Python SDK ${PYTHON_SDK_SHA}" \
+            --body "$(cat <<'EOF'
+          ## Summary
+
+          Automated sync with the official Python SDK (`anthropics/claude-agent-sdk-python`).
+
+          - Python SDK commit: `${{ env.PYTHON_SDK_SHA }}`
+          - Fixture changes: `${{ env.FIXTURES_CHANGED }}`
+          - Tests before sync: `${{ steps.test_before.outcome }}`
+          - Coverage before sync: `${{ steps.coverage.outcome }}`
+
+          ## What changed
+
+          Claude Code analyzed the differences between the Python SDK and this Go SDK,
+          updated types/parsers/args to match, and verified all tests pass.
+
+          ## Test plan
+
+          - [ ] All conformance tests pass
+          - [ ] Type coverage check passes
+          - [ ] `go vet` clean
+          - [ ] No external dependencies added
+          EOF
+          )"
