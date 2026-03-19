@@ -87,7 +87,10 @@ func (s *Session) readLoop() {
 		if json.Unmarshal(line, &peek) == nil {
 			switch peek.Type {
 			case "control_request":
-				s.dispatchControlRequest(peek.RequestID, peek.Request)
+				if err := s.dispatchControlRequest(peek.RequestID, peek.Request); err != nil {
+					s.messages <- messageOrEOF{err: err}
+					return
+				}
 				continue
 			case "control_response":
 				var resp protocol.ControlResponseBody
@@ -125,22 +128,21 @@ func (s *Session) readLoop() {
 }
 
 // dispatchControlRequest handles a control request from the CLI.
-func (s *Session) dispatchControlRequest(requestID string, request json.RawMessage) {
+func (s *Session) dispatchControlRequest(requestID string, request json.RawMessage) error {
 	var body struct {
 		Subtype string `json:"subtype"`
 	}
 	if json.Unmarshal(request, &body) != nil {
-		s.mux.SendErrorResponse(requestID, "failed to parse request")
-		return
+		return s.mux.SendErrorResponse(requestID, "failed to parse request")
 	}
 
 	switch body.Subtype {
 	case "can_use_tool":
-		handleCanUseTool(s.mux, s.cfg, requestID, request)
+		return handleCanUseTool(s.mux, s.cfg, requestID, request)
 	case "hook_callback":
-		handleHookCallback(s.mux, s.cfg, requestID, request)
+		return handleHookCallback(s.mux, s.cfg, requestID, request)
 	default:
-		s.mux.SendErrorResponse(requestID, "unsupported: "+body.Subtype)
+		return s.mux.SendErrorResponse(requestID, "unsupported: "+body.Subtype)
 	}
 }
 

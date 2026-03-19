@@ -10,14 +10,21 @@ linters:
     - ineffassign
     - staticcheck
     - unused
-    - gosimple
     - gocritic
     - misspell
     - unconvert
     - unparam
-    - bodyclose
     - nilerr
     - prealloc
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - unparam
+      - path: internal/testutil/
+        linters:
+          - errcheck
 
   settings:
     gocritic:
@@ -27,13 +34,7 @@ linters:
       disabled-checks:
         - commentedOutCode
         - whyNoLint
+        - singleCaseSwitch
 
     misspell:
       locale: US
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - unparam

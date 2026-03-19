@@ -61,7 +61,7 @@ func ListSessions(opts *ListSessionsOptions) ([]SessionInfo, error) {
 
 	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return nil // skip inaccessible dirs
+			return err
 		}
 		if d.IsDir() || !strings.HasSuffix(d.Name(), ".jsonl") {
 			return nil
@@ -69,7 +69,7 @@ func ListSessions(opts *ListSessionsOptions) ([]SessionInfo, error) {
 
 		info, err := d.Info()
 		if err != nil {
-			return nil
+			return err
 		}
 
 		sessionID := strings.TrimSuffix(d.Name(), ".jsonl")
@@ -123,7 +123,7 @@ func GetSessionMessages(sessionID string, opts *GetSessionMessagesOptions) ([]Se
 	if err != nil {
 		return nil, fmt.Errorf("claude: open session: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var messages []SessionMessage
 	scanner := bufio.NewScanner(f)
@@ -170,7 +170,7 @@ type GetSessionMessagesOptions struct {
 }
 
 // GetSessionInfo reads metadata for a single session.
-func GetSessionInfo(sessionID string, dir string) (*SessionInfo, error) {
+func GetSessionInfo(sessionID, dir string) (*SessionInfo, error) {
 	path, err := findSessionFile(sessionID, dir)
 	if err != nil {
 		return nil, err
@@ -235,8 +235,11 @@ func findSessionFile(sessionID, dir string) (string, error) {
 	projectsDir := filepath.Join(home, ".claude", "projects")
 	var found string
 
-	filepath.WalkDir(projectsDir, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+	_ = filepath.WalkDir(projectsDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
 			return nil
 		}
 		if d.Name() == sessionID+".jsonl" {
@@ -257,7 +260,7 @@ func extractSessionSummary(path string) (summary, firstPrompt string) {
 	if err != nil {
 		return "", ""
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1*1024*1024)

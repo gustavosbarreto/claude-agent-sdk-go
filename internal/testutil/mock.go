@@ -38,7 +38,7 @@ func MockStreamingCLIScript(initLines []string, responseTurns [][]string) (strin
 	sb.WriteString("  case \"$input\" in *'\"type\":\"user\"'*) ;; *) continue ;; esac\n")
 
 	for i, turn := range responseTurns {
-		sb.WriteString(fmt.Sprintf("  if [ \"$TURN\" -eq %d ]; then\n", i))
+		fmt.Fprintf(&sb, "  if [ \"$TURN\" -eq %d ]; then\n", i)
 		for _, line := range turn {
 			escaped := strings.ReplaceAll(line, "'", "'\\''")
 			fmt.Fprintf(&sb, "    echo '%s'\n", escaped)
@@ -58,11 +58,11 @@ func writeTempScript(content string) (string, error) {
 		return "", err
 	}
 	if _, err := f.WriteString(content); err != nil {
-		f.Close()
-		os.Remove(f.Name())
+		_ = f.Close()
+		_ = os.Remove(f.Name())
 		return "", err
 	}
-	f.Close()
+	_ = f.Close()
 	if err := os.Chmod(f.Name(), 0o755); err != nil {
 		os.Remove(f.Name())
 		return "", err

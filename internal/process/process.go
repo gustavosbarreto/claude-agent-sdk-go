@@ -125,7 +125,7 @@ func (p *Process) Stderr() io.Reader {
 // Used for one-shot mode: send prompt, close stdin, then read response.
 func (p *Process) CloseStdin() {
 	p.once.Do(func() {
-		p.stdin.Close()
+		_ = p.stdin.Close()
 	})
 }
 

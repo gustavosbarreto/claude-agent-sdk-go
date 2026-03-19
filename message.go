@@ -65,7 +65,7 @@ type SystemMessage struct {
 	Stderr    string `json:"stderr,omitempty"`
 	Output    string `json:"output,omitempty"`
 	ExitCode  *int   `json:"exit_code,omitempty"`
-	Outcome   string `json:"outcome,omitempty"` // success, error, cancelled
+	Outcome   string `json:"outcome,omitempty"` // success, error, canceled
 
 	// Task subtype fields (task_started, task_progress, task_notification).
 	TaskID          string     `json:"task_id,omitempty"`

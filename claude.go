@@ -27,7 +27,7 @@ func Prompt(ctx context.Context, prompt string, opts ...Option) (*ResultMessage,
 	if err != nil {
 		return nil, err
 	}
-	defer proc.Close()
+	defer func() { _ = proc.Close() }()
 
 	// Drain stderr in background.
 	go drainStderr(proc, cfg.StderrCallback)
@@ -68,7 +68,9 @@ func Prompt(ctx context.Context, prompt string, opts ...Option) (*ResultMessage,
 
 		// Handle control requests (permissions, hooks).
 		if raw, ok := parsed.(*RawMessage); ok {
-			handleControlRequest(proc, cfg, raw.Data)
+			if err := handleControlRequest(proc, cfg, raw.Data); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -96,7 +98,7 @@ func Query(ctx context.Context, prompt string, opts ...Option) iter.Seq2[Message
 			yield(nil, err)
 			return
 		}
-		defer proc.Close()
+		defer func() { _ = proc.Close() }()
 
 		go drainStderr(proc, cfg.StderrCallback)
 
@@ -130,7 +132,10 @@ func Query(ctx context.Context, prompt string, opts ...Option) iter.Seq2[Message
 
 			// Handle control requests transparently.
 			if raw, ok := parsed.(*RawMessage); ok {
-				handleControlRequest(proc, cfg, raw.Data)
+				if err := handleControlRequest(proc, cfg, raw.Data); err != nil {
+					yield(nil, err)
+					return
+				}
 				continue
 			}
 
@@ -249,41 +254,44 @@ func toProcessConfig(cfg *Config, streaming bool) process.Config {
 }
 
 // handleControlRequest processes a control request from the CLI.
-func handleControlRequest(proc *process.Process, cfg *Config, data json.RawMessage) {
+// Errors from writing responses propagate up — if the pipe is broken,
+// the session/query will see it on the next read.
+func handleControlRequest(proc *process.Process, cfg *Config, data json.RawMessage) error {
 	var raw struct {
 		Type      string          `json:"type"`
 		RequestID string          `json:"request_id"`
 		Request   json.RawMessage `json:"request"`
 	}
-	if json.Unmarshal(data, &raw) != nil || raw.Type != "control_request" {
-		return
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("claude: parse control message: %w", err)
+	}
+	if raw.Type != "control_request" {
+		return nil // not a control request, nothing to do
 	}
 
 	var body struct {
 		Subtype string `json:"subtype"`
 	}
-	if json.Unmarshal(raw.Request, &body) != nil {
-		return
+	if err := json.Unmarshal(raw.Request, &body); err != nil {
+		mux := protocol.NewMux(proc)
+		return mux.SendErrorResponse(raw.RequestID, fmt.Sprintf("failed to parse request: %v", err))
 	}
 
 	mux := protocol.NewMux(proc)
 
 	switch body.Subtype {
 	case "can_use_tool":
-		handleCanUseTool(mux, cfg, raw.RequestID, raw.Request)
+		return handleCanUseTool(mux, cfg, raw.RequestID, raw.Request)
 	case "hook_callback":
-		handleHookCallback(mux, cfg, raw.RequestID, raw.Request)
+		return handleHookCallback(mux, cfg, raw.RequestID, raw.Request)
 	default:
-		// Unknown control request — send error response.
-		mux.SendErrorResponse(raw.RequestID, "unsupported request: "+body.Subtype)
+		return mux.SendErrorResponse(raw.RequestID, "unsupported request: "+body.Subtype)
 	}
 }
 
-func handleCanUseTool(mux *protocol.Mux, cfg *Config, requestID string, request json.RawMessage) {
+func handleCanUseTool(mux *protocol.Mux, cfg *Config, requestID string, request json.RawMessage) error {
 	if cfg.CanUseTool == nil {
-		// No handler — allow by default.
-		mux.SendResponse(requestID, map[string]any{"behavior": "allow"})
-		return
+		return mux.SendResponse(requestID, map[string]any{"behavior": "allow"})
 	}
 
 	var req struct {
@@ -291,38 +299,34 @@ func handleCanUseTool(mux *protocol.Mux, cfg *Config, requestID string, request 
 		Input    map[string]any `json:"input"`
 	}
 	if json.Unmarshal(request, &req) != nil {
-		mux.SendResponse(requestID, map[string]any{"behavior": "allow"})
-		return
+		return mux.SendResponse(requestID, map[string]any{"behavior": "allow"})
 	}
 
 	result, err := cfg.CanUseTool(req.ToolName, req.Input, CanUseToolOptions{})
 	if err != nil {
-		mux.SendErrorResponse(requestID, err.Error())
-		return
+		return mux.SendErrorResponse(requestID, err.Error())
 	}
 
-	mux.SendResponse(requestID, result)
+	return mux.SendResponse(requestID, result)
 }
 
-func handleHookCallback(mux *protocol.Mux, cfg *Config, requestID string, request json.RawMessage) {
+func handleHookCallback(mux *protocol.Mux, cfg *Config, requestID string, request json.RawMessage) error {
 	var req struct {
 		HookEventName string          `json:"hook_event_name"`
 		Body          json.RawMessage `json:"body"`
 	}
 	if json.Unmarshal(request, &req) != nil {
-		mux.SendErrorResponse(requestID, "failed to parse hook callback")
-		return
+		return mux.SendErrorResponse(requestID, "failed to parse hook callback")
 	}
 
 	event := HookEvent(req.HookEventName)
 	matchers, ok := cfg.Hooks[event]
 	if !ok || len(matchers) == 0 {
-		mux.SendResponse(requestID, map[string]any{})
-		return
+		return mux.SendResponse(requestID, map[string]any{})
 	}
 
 	var input HookInput
-	json.Unmarshal(req.Body, &input)
+	_ = json.Unmarshal(req.Body, &input)
 
 	ctx := context.Background()
 	var lastOutput HookOutput
@@ -330,14 +334,13 @@ func handleHookCallback(mux *protocol.Mux, cfg *Config, requestID string, reques
 		for _, hook := range m.Hooks {
 			output, err := hook(ctx, input)
 			if err != nil {
-				mux.SendErrorResponse(requestID, err.Error())
-				return
+				return mux.SendErrorResponse(requestID, err.Error())
 			}
 			lastOutput = output
 		}
 	}
 
-	mux.SendResponse(requestID, lastOutput)
+	return mux.SendResponse(requestID, lastOutput)
 }
 
 // drainStderr reads stderr and optionally calls the callback.

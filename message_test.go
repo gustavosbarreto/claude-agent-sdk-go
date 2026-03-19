@@ -357,7 +357,8 @@ func TestErrors(t *testing.T) {
 		t.Errorf("ProcessError = %q", pe2.Error())
 	}
 
-	parseErr := &ParseError{Line: "bad", Err: json.Unmarshal([]byte("bad"), nil)}
+	var dummy any
+	parseErr := &ParseError{Line: "bad", Err: json.Unmarshal([]byte("bad"), &dummy)}
 	if parseErr.Unwrap() == nil {
 		t.Error("Unwrap should return underlying error")
 	}

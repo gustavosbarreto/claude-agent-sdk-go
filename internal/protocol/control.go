@@ -148,7 +148,7 @@ func (m *Mux) SendResponse(requestID string, payload any) error {
 }
 
 // SendErrorResponse sends an error control response back to the CLI.
-func (m *Mux) SendErrorResponse(requestID string, errMsg string) error {
+func (m *Mux) SendErrorResponse(requestID, errMsg string) error {
 	resp := ControlResponse{
 		Type: "control_response",
 		Response: ControlResponseBody{

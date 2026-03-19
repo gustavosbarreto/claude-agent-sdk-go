@@ -175,9 +175,9 @@ func WithSystemPrompt(prompt string) Option {
 	return func(c *Config) { c.SystemPrompt = &SystemPromptConfig{Text: prompt} }
 }
 
-func WithSystemPromptPreset(append string) Option {
+func WithSystemPromptPreset(appendText string) Option {
 	return func(c *Config) {
-		c.SystemPrompt = &SystemPromptConfig{Preset: true, Append: append}
+		c.SystemPrompt = &SystemPromptConfig{Preset: true, Append: appendText}
 	}
 }
 
