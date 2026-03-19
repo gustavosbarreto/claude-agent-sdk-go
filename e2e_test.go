@@ -197,8 +197,8 @@ func TestE2E_StructuredOutput(t *testing.T) {
 		"required": []string{"answer", "confidence"},
 	}
 
-	result, err := claude.Prompt(ctx, "What is 7*8? Respond with the answer and your confidence level.",
-		claude.WithMaxTurns(1),
+	result, err := claude.Prompt(ctx, "What is 7*8?",
+		claude.WithMaxTurns(3),
 		claude.WithOutputFormat(claude.OutputFormat{Type: "json_schema", Schema: schema}),
 		claude.WithPermissionMode(claude.PermissionBypassPermissions),
 		claude.WithAllowDangerouslySkipPermissions(),
@@ -212,7 +212,7 @@ func TestE2E_StructuredOutput(t *testing.T) {
 		t.Errorf("subtype = %q", result.Subtype)
 	}
 	if len(result.StructuredOutput) == 0 {
-		t.Log("no structured_output field (may need newer CLI version)")
+		t.Error("structured_output field is empty")
 	} else {
 		t.Logf("structured_output: %s", string(result.StructuredOutput))
 	}
