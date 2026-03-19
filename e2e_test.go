@@ -198,7 +198,6 @@ func TestE2E_StructuredOutput(t *testing.T) {
 	}
 
 	result, err := claude.Prompt(ctx, "What is 7*8?",
-		claude.WithMaxTurns(3),
 		claude.WithOutputFormat(claude.OutputFormat{Type: "json_schema", Schema: schema}),
 		claude.WithPermissionMode(claude.PermissionBypassPermissions),
 		claude.WithAllowDangerouslySkipPermissions(),
