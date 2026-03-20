@@ -252,7 +252,8 @@ func TestE2E_Session_SetModel(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	session, err := claude.NewSession(ctx, defaultOpts()...)
+	// No extra options — matching Python: ClaudeAgentOptions()
+	session, err := claude.NewSession(ctx)
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
@@ -272,7 +273,7 @@ func TestE2E_Session_SetModel(t *testing.T) {
 	}
 
 	// Switch to haiku
-	if err := session.SetModel("claude-haiku-4-5"); err != nil {
+	if err := session.SetModel("claude-3-5-haiku-20241022"); err != nil {
 		t.Fatalf("SetModel to haiku: %v", err)
 	}
 
@@ -740,9 +741,8 @@ func TestE2E_Hook_PermissionDeny(t *testing.T) {
 
 	matcher := "Bash"
 	messages := collectMessages(t, ctx, "Run this bash command: echo 'hello'",
-		claude.WithPermissionMode(claude.PermissionAcceptEdits),
+		// Matching Python: ClaudeAgentOptions(allowed_tools=["Bash","Write"], hooks=...)
 		claude.WithAllowedTools("Bash", "Write"),
-		claude.WithNoPersistSession(),
 		claude.WithHook(claude.HookPreToolUse, claude.HookCallbackMatcher{
 			Matcher: &matcher,
 			Hooks: []claude.HookCallback{
