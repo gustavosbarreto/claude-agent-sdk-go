@@ -1,10 +1,12 @@
 package claude
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"iter"
+	"strings"
 
 	"github.com/shellhub-io/claude-agent-sdk-go/internal/process"
 	"github.com/shellhub-io/claude-agent-sdk-go/internal/protocol"
@@ -223,16 +225,19 @@ func handleHookCallback(mux *protocol.Mux, cfg *Config, requestID string, reques
 	return mux.SendResponse(requestID, lastOutput)
 }
 
-// drainStderr reads stderr and optionally calls the callback.
+// drainStderr reads stderr line by line and calls the callback per line.
+// Matches the Python SDK behavior where the callback receives one line at a time
+// with trailing whitespace stripped.
 func drainStderr(proc *process.Process, callback func(string)) {
-	buf := make([]byte, 4096)
-	for {
-		n, err := proc.Stderr().Read(buf)
-		if n > 0 && callback != nil {
-			callback(string(buf[:n]))
+	scanner := bufio.NewScanner(proc.Stderr())
+	scanner.Buffer(make([]byte, 0, 64*1024), 1*1024*1024)
+	for scanner.Scan() {
+		line := strings.TrimRight(scanner.Text(), " \t\r\n")
+		if line == "" {
+			continue
 		}
-		if err != nil {
-			return
+		if callback != nil {
+			callback(line)
 		}
 	}
 }

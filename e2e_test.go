@@ -497,7 +497,7 @@ func TestE2E_StderrCallback(t *testing.T) {
 		t.Error("should contain [DEBUG] messages in stderr")
 	}
 
-	t.Logf("stderr chunks: %d", len(stderrOutput))
+	t.Logf("stderr lines: %d", len(stderrOutput))
 }
 
 func TestE2E_StderrCallback_WithoutDebug(t *testing.T) {
@@ -523,7 +523,7 @@ func TestE2E_StderrCallback_WithoutDebug(t *testing.T) {
 	assertResultOK(t, result)
 
 	if len(stderrOutput) != 0 {
-		t.Errorf("should not capture stderr output without debug mode, got %d chunks", len(stderrOutput))
+		t.Errorf("should not capture stderr output without debug mode, got %d lines", len(stderrOutput))
 	}
 }
 
@@ -544,7 +544,7 @@ func TestE2E_IncludePartialMessages(t *testing.T) {
 	assertMessageOrder(t, messages)
 	assertResultOK(t, findResult(t, messages))
 
-	// Count stream events and check for specific types.
+	// Collect stream events.
 	var streamEvents []*claude.StreamEvent
 	for _, msg := range messages {
 		if se, ok := msg.(*claude.StreamEvent); ok {
@@ -553,9 +553,49 @@ func TestE2E_IncludePartialMessages(t *testing.T) {
 	}
 
 	if len(streamEvents) == 0 {
-		t.Error("no StreamEvent messages with includePartialMessages enabled")
-	} else {
-		t.Logf("stream events: %d", len(streamEvents))
+		t.Fatal("no StreamEvent messages with includePartialMessages enabled")
+	}
+	t.Logf("stream events: %d", len(streamEvents))
+
+	// Check for expected StreamEvent types (matching Python SDK assertions).
+	eventTypes := make(map[string]bool)
+	for _, se := range streamEvents {
+		var evt struct {
+			Type string `json:"type"`
+		}
+		if json.Unmarshal(se.Event, &evt) == nil && evt.Type != "" {
+			eventTypes[evt.Type] = true
+		}
+	}
+
+	for _, expected := range []string{
+		"message_start",
+		"content_block_start",
+		"content_block_delta",
+		"content_block_stop",
+		"message_stop",
+	} {
+		if !eventTypes[expected] {
+			t.Errorf("missing StreamEvent type %q", expected)
+		}
+	}
+	t.Logf("event types: %v", eventTypes)
+
+	// Verify AssistantMessage has TextBlock content.
+	hasText := false
+	for _, msg := range messages {
+		a, ok := msg.(*claude.AssistantMessage)
+		if !ok {
+			continue
+		}
+		for _, block := range a.Message.Content {
+			if block.Type == claude.ContentBlockText && block.Text != "" {
+				hasText = true
+			}
+		}
+	}
+	if !hasText {
+		t.Error("no TextBlock found in AssistantMessages")
 	}
 
 	// Verify we still got the regular messages alongside stream events.
