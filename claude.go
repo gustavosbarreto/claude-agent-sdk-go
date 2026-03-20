@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"iter"
 
 	"github.com/shellhub-io/claude-agent-sdk-go/internal/process"
@@ -18,59 +17,19 @@ func Prompt(ctx context.Context, prompt string, opts ...Option) (*ResultMessage,
 		return nil, ErrEmptyPrompt
 	}
 
-	cfg := applyOptions(opts)
-	// Always use streaming mode — prompt is sent via stdin, not CLI args.
-	// This matches the official Python SDK's behavior.
-	procCfg := toProcessConfig(cfg, true)
-
-	proc, err := process.Start(ctx, cfg.CLIPath, procCfg)
+	session, err := NewSession(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = proc.Close() }()
-
-	// Drain stderr in background.
-	go drainStderr(proc, cfg.StderrCallback)
-
-	// Send the prompt as a user message via stdin, then close stdin
-	// to signal that no more messages are coming.
-	msg := map[string]any{
-		"type": "user",
-		"message": map[string]any{
-			"role":    "user",
-			"content": prompt,
-		},
-	}
-	if err := proc.WriteLine(msg); err != nil {
-		return nil, fmt.Errorf("claude: write prompt: %w", err)
-	}
+	defer func() { _ = session.Close() }()
 
 	var result *ResultMessage
-	for {
-		line, err := proc.ReadLine()
+	for msg, err := range session.Send(ctx, prompt) {
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
 			return nil, err
 		}
-
-		parsed, err := ParseMessage(line)
-		if err != nil {
-			continue // skip unparseable lines
-		}
-
-		if r, ok := parsed.(*ResultMessage); ok {
+		if r, ok := msg.(*ResultMessage); ok {
 			result = r
-			proc.CloseStdin()
-			break
-		}
-
-		// Handle control requests (permissions, hooks).
-		if raw, ok := parsed.(*RawMessage); ok {
-			if err := handleControlRequest(proc, cfg, raw.Data); err != nil {
-				return nil, err
-			}
 		}
 	}
 
@@ -90,62 +49,19 @@ func Query(ctx context.Context, prompt string, opts ...Option) iter.Seq2[Message
 			return
 		}
 
-		cfg := applyOptions(opts)
-		procCfg := toProcessConfig(cfg, true)
-
-		proc, err := process.Start(ctx, cfg.CLIPath, procCfg)
+		session, err := NewSession(ctx, opts...)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
-		defer func() { _ = proc.Close() }()
+		defer func() { _ = session.Close() }()
 
-		go drainStderr(proc, cfg.StderrCallback)
-
-		// Send prompt via stdin, then close to signal one-shot.
-		msg := map[string]any{
-			"type": "user",
-			"message": map[string]any{
-				"role":    "user",
-				"content": prompt,
-			},
-		}
-		if err := proc.WriteLine(msg); err != nil {
-			yield(nil, fmt.Errorf("claude: write prompt: %w", err))
-			return
-		}
-
-		for {
-			line, err := proc.ReadLine()
+		for msg, err := range session.Send(ctx, prompt) {
 			if err != nil {
-				if err == io.EOF {
-					return
-				}
 				yield(nil, err)
 				return
 			}
-
-			parsed, err := ParseMessage(line)
-			if err != nil {
-				continue
-			}
-
-			// Handle control requests transparently.
-			if raw, ok := parsed.(*RawMessage); ok {
-				if err := handleControlRequest(proc, cfg, raw.Data); err != nil {
-					yield(nil, err)
-					return
-				}
-				continue
-			}
-
-			if !yield(parsed, nil) {
-				return
-			}
-
-			// Close stdin after result to signal we're done (one-shot).
-			if _, ok := parsed.(*ResultMessage); ok {
-				proc.CloseStdin()
+			if !yield(msg, nil) {
 				return
 			}
 		}
@@ -251,42 +167,6 @@ func toProcessConfig(cfg *Config, streaming bool) process.Config {
 	}
 
 	return pc
-}
-
-// handleControlRequest processes a control request from the CLI.
-// Errors from writing responses propagate up — if the pipe is broken,
-// the session/query will see it on the next read.
-func handleControlRequest(proc *process.Process, cfg *Config, data json.RawMessage) error {
-	var raw struct {
-		Type      string          `json:"type"`
-		RequestID string          `json:"request_id"`
-		Request   json.RawMessage `json:"request"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return fmt.Errorf("claude: parse control message: %w", err)
-	}
-	if raw.Type != "control_request" {
-		return nil // not a control request, nothing to do
-	}
-
-	var body struct {
-		Subtype string `json:"subtype"`
-	}
-	if err := json.Unmarshal(raw.Request, &body); err != nil {
-		mux := protocol.NewMux(proc)
-		return mux.SendErrorResponse(raw.RequestID, fmt.Sprintf("failed to parse request: %v", err))
-	}
-
-	mux := protocol.NewMux(proc)
-
-	switch body.Subtype {
-	case "can_use_tool":
-		return handleCanUseTool(mux, cfg, raw.RequestID, raw.Request)
-	case "hook_callback":
-		return handleHookCallback(mux, cfg, raw.RequestID, raw.Request)
-	default:
-		return mux.SendErrorResponse(raw.RequestID, "unsupported request: "+body.Subtype)
-	}
 }
 
 func handleCanUseTool(mux *protocol.Mux, cfg *Config, requestID string, request json.RawMessage) error {
