@@ -37,4 +37,5 @@ USER claude
 WORKDIR /workspace
 
 ENTRYPOINT ["/workspace/e2e.test"]
-CMD ["-test.v", "-test.run", "TestE2E_[^C]", "-test.timeout=5m"]
+ENV INSIDE_CONTAINER=1
+CMD ["-test.v", "-test.run", "TestE2E", "-test.timeout=5m"]

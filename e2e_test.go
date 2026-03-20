@@ -917,6 +917,62 @@ func TestE2E_Hook_MultipleHooks(t *testing.T) {
 	}
 }
 
+func TestE2E_CanUseTool(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	type invocation struct {
+		toolName string
+		input    map[string]any
+	}
+	var invocations []invocation
+
+	testFile := "/tmp/sdk_permission_test.txt"
+
+	// No permission_mode set — uses default, which consults can_use_tool callback.
+	// Matching the Python SDK test_permission_callback_gets_called exactly.
+	session, err := claude.NewSession(ctx,
+		claude.WithNoPersistSession(),
+		claude.WithCanUseTool(func(toolName string, input map[string]any, opts claude.CanUseToolOptions) (claude.PermissionResult, error) {
+			t.Logf("can_use_tool: %s", toolName)
+			invocations = append(invocations, invocation{toolName: toolName, input: input})
+			return claude.PermissionResult{Behavior: "allow"}, nil
+		}),
+	)
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	for msg, err := range session.Send(ctx, "Run the command: touch "+testFile) {
+		if err != nil {
+			t.Fatalf("Send: %v", err)
+		}
+		if r, ok := msg.(*claude.ResultMessage); ok {
+			assertResultOK(t, r)
+		}
+	}
+
+	// Verify callback was invoked for Bash (touch is not auto-allowed).
+	var gotBash bool
+	for _, inv := range invocations {
+		if inv.toolName == "Bash" {
+			gotBash = true
+		}
+	}
+	if !gotBash {
+		toolNames := make([]string, 0, len(invocations))
+		for _, inv := range invocations {
+			toolNames = append(toolNames, inv.toolName)
+		}
+		t.Errorf("permission callback should have been invoked for Bash, got: %v", toolNames)
+	}
+
+	t.Logf("callback invocations: %d", len(invocations))
+}
+
 // typeName returns a short name for a message type.
 func typeName(msg claude.Message) string {
 	switch msg.(type) {

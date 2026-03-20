@@ -72,6 +72,14 @@ func Query(ctx context.Context, prompt string, opts ...Option) iter.Seq2[Message
 
 // toProcessConfig converts the public Config to the internal process.Config.
 func toProcessConfig(cfg *Config, streaming bool) process.Config {
+	// When CanUseTool callback is provided, automatically set permission-prompt-tool
+	// to "stdio" so the CLI sends permission requests via the control protocol.
+	// This matches the Python SDK behavior (client.py line 70).
+	permissionPromptTool := ""
+	if cfg.CanUseTool != nil {
+		permissionPromptTool = "stdio"
+	}
+
 	pc := process.Config{
 		Streaming:                       streaming,
 		Model:                           cfg.Model,
@@ -80,6 +88,7 @@ func toProcessConfig(cfg *Config, streaming bool) process.Config {
 		DisallowedTools:                 cfg.DisallowedTools,
 		PermissionMode:                  string(cfg.PermissionMode),
 		AllowDangerouslySkipPermissions: cfg.AllowDangerouslySkipPermissions,
+		PermissionPromptTool:            permissionPromptTool,
 		MaxTurns:                        cfg.MaxTurns,
 		MaxBudgetUSD:                    cfg.MaxBudgetUSD,
 		Effort:                          cfg.Effort,

@@ -17,6 +17,7 @@ type Config struct {
 	Tools                           any // []string or struct{Type,Preset}
 	PermissionMode                  string
 	AllowDangerouslySkipPermissions bool
+	PermissionPromptTool            string
 	MaxTurns                        *int
 	MaxBudgetUSD                    *float64
 	Thinking                        any // ThinkingConfig
@@ -87,6 +88,10 @@ func BuildArgs(cfg Config) []string {
 		} else {
 			args = append(args, "--permission-mode", cfg.PermissionMode)
 		}
+	}
+
+	if cfg.PermissionPromptTool != "" {
+		args = append(args, "--permission-prompt-tool", cfg.PermissionPromptTool)
 	}
 
 	if cfg.MaxTurns != nil {

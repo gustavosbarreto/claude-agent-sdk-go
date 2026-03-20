@@ -21,6 +21,9 @@ func TestE2E_Container(t *testing.T) {
 	if os.Getenv("CLAUDE_E2E") == "" {
 		t.Skip("set CLAUDE_E2E=1 to run e2e tests")
 	}
+	if os.Getenv("INSIDE_CONTAINER") != "" {
+		t.Skip("already inside container")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -33,8 +36,10 @@ func TestE2E_Container(t *testing.T) {
 
 	req := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
-			Context:    ".",
-			Dockerfile: "Dockerfile.test",
+			Context:       ".",
+			Dockerfile:    "Dockerfile.test",
+			PrintBuildLog: true,
+			KeepImage:     true,
 		},
 		Env: map[string]string{
 			"CLAUDE_E2E": "1",
