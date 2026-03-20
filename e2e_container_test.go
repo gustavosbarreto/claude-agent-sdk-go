@@ -47,8 +47,10 @@ func TestE2E_Container(t *testing.T) {
 		WaitingFor: wait.ForExit().WithExitTimeout(10 * time.Minute),
 	}
 
-	// Auth: prefer API key env var, fall back to credentials bind mount.
-	if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
+	// Auth: prefer env vars (for CI), fall back to credentials bind mount (local).
+	if oauthToken := os.Getenv("CLAUDE_CODE_OAUTH_TOKEN"); oauthToken != "" {
+		req.Env["CLAUDE_CODE_OAUTH_TOKEN"] = oauthToken
+	} else if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
 		req.Env["ANTHROPIC_API_KEY"] = apiKey
 	} else if _, err := os.Stat(credFile); err == nil {
 		req.HostConfigModifier = func(hc *container.HostConfig) {
@@ -57,7 +59,7 @@ func TestE2E_Container(t *testing.T) {
 			)
 		}
 	} else {
-		t.Fatal("no ANTHROPIC_API_KEY and no ~/.claude/.credentials.json")
+		t.Fatal("no CLAUDE_CODE_OAUTH_TOKEN, ANTHROPIC_API_KEY, or ~/.claude/.credentials.json")
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
