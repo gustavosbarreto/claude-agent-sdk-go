@@ -1160,6 +1160,62 @@ func TestE2E_SettingSources_ProjectIncluded(t *testing.T) {
 	t.Logf("output_style: %q", initMsg.OutputStyle)
 }
 
+func TestE2E_SdkMcpTool(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	var executions []string
+
+	srv := claude.NewSdkMcpServer("test",
+		claude.SdkMcpTool{
+			Name:        "echo",
+			Description: "Echo back the input text",
+			InputSchema: map[string]any{
+				"text": map[string]any{"type": "string"},
+			},
+			Handler: func(ctx context.Context, args map[string]any) ([]claude.ToolContent, error) {
+				executions = append(executions, "echo")
+				text, _ := args["text"].(string)
+				t.Logf("echo tool called: %s", text)
+				return []claude.ToolContent{{Type: "text", Text: "Echo: " + text}}, nil
+			},
+		},
+	)
+
+	session, err := claude.NewSession(ctx,
+		claude.WithSdkMcpServer("test", srv),
+		claude.WithAllowedTools("mcp__test__echo"),
+		claude.WithNoPersistSession(),
+	)
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	for msg, err := range session.Send(ctx, "Call the mcp__test__echo tool with text 'hello world'") {
+		if err != nil {
+			t.Fatalf("Send: %v", err)
+		}
+		if r, ok := msg.(*claude.ResultMessage); ok {
+			assertResultOK(t, r)
+		}
+	}
+
+	// Verify the Go function was actually called.
+	found := false
+	for _, e := range executions {
+		if e == "echo" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("echo tool function was not executed")
+	}
+	t.Logf("executions: %v", executions)
+}
+
 // typeName returns a short name for a message type.
 func typeName(msg claude.Message) string {
 	switch msg.(type) {

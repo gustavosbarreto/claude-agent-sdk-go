@@ -25,8 +25,10 @@ type Session struct {
 	mu        sync.Mutex
 
 	// hookCallbacks maps callback IDs to hook functions.
-	// Populated during initialize and used by dispatchControlRequest.
 	hookCallbacks map[string]HookCallback
+
+	// sdkMcpServers holds inline MCP servers for handling mcp_message requests.
+	sdkMcpServers map[string]*SdkMcpServer
 
 	// messages is fed by the reader goroutine. Send() consumes it.
 	messages chan messageOrEOF
@@ -62,6 +64,7 @@ func NewSession(ctx context.Context, opts ...Option) (*Session, error) {
 		mux:           mux,
 		cfg:           cfg,
 		hookCallbacks: hookCallbacks,
+		sdkMcpServers: cfg.SdkMcpServers,
 		messages:      make(chan messageOrEOF, 64),
 		readerDone:    make(chan struct{}),
 	}
@@ -218,6 +221,32 @@ func (s *Session) dispatchControlRequest(requestID string, request json.RawMessa
 		// Format output matching the CLI's expected format.
 		// The Python SDK passes the hook output dict directly as the response.
 		return s.mux.SendResponse(requestID, formatHookOutput(output, input.HookEventName))
+
+	case "mcp_message":
+		// Route MCP messages to inline SDK MCP servers.
+		var mcpReq struct {
+			ServerName string          `json:"server_name"`
+			Message    json.RawMessage `json:"message"`
+		}
+		if json.Unmarshal(request, &mcpReq) != nil {
+			return s.mux.SendErrorResponse(requestID, "failed to parse mcp_message")
+		}
+
+		srv, ok := s.sdkMcpServers[mcpReq.ServerName]
+		if !ok {
+			return s.mux.SendErrorResponse(requestID,
+				fmt.Sprintf("unknown SDK MCP server: %s", mcpReq.ServerName))
+		}
+
+		resp, err := srv.HandleMessage(context.Background(), mcpReq.Message)
+		if err != nil {
+			return s.mux.SendErrorResponse(requestID, err.Error())
+		}
+
+		// Wrap as mcp_response (matching Python SDK line 319).
+		var respObj any
+		_ = json.Unmarshal(resp, &respObj)
+		return s.mux.SendResponse(requestID, map[string]any{"mcp_response": respObj})
 
 	default:
 		return s.mux.SendErrorResponse(requestID, "unsupported: "+body.Subtype)

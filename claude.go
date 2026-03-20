@@ -131,10 +131,15 @@ func toProcessConfig(cfg *Config, streaming bool) process.Config {
 		pc.Thinking = cfg.Thinking
 	}
 
-	if len(cfg.MCPServers) > 0 {
+	if len(cfg.MCPServers) > 0 || len(cfg.SdkMcpServers) > 0 {
 		pc.MCPServers = make(map[string]any)
 		for k, v := range cfg.MCPServers {
 			pc.MCPServers[k] = v
+		}
+		// SDK MCP servers are passed to CLI as type: "sdk" configs.
+		// The CLI routes tool calls back via mcp_message control requests.
+		for k := range cfg.SdkMcpServers {
+			pc.MCPServers[k] = map[string]any{"type": "sdk", "name": k}
 		}
 	}
 

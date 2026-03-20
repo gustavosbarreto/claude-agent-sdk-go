@@ -119,8 +119,10 @@ func BuildArgs(cfg Config) []string {
 	}
 
 	if len(cfg.MCPServers) > 0 {
-		if data, err := json.Marshal(cfg.MCPServers); err == nil {
-			args = append(args, "--mcp-servers", string(data))
+		// Use --mcp-config with {"mcpServers": {...}} format (matching Python SDK).
+		wrapper := map[string]any{"mcpServers": cfg.MCPServers}
+		if data, err := json.Marshal(wrapper); err == nil {
+			args = append(args, "--mcp-config", string(data))
 		}
 	}
 

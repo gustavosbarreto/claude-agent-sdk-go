@@ -23,6 +23,7 @@ type Config struct {
 	MaxThinkingTokens               *int
 	IncludePartialMessages          bool
 	MCPServers                      map[string]MCPServerConfig
+	SdkMcpServers                   map[string]*SdkMcpServer
 	Hooks                           map[HookEvent][]HookCallbackMatcher
 	Agents                          map[string]AgentDefinition
 	Resume                          string
@@ -243,6 +244,15 @@ func WithMaxThinkingTokens(n int) Option {
 
 func WithIncludePartialMessages() Option {
 	return func(c *Config) { c.IncludePartialMessages = true }
+}
+
+func WithSdkMcpServer(name string, srv *SdkMcpServer) Option {
+	return func(c *Config) {
+		if c.SdkMcpServers == nil {
+			c.SdkMcpServers = make(map[string]*SdkMcpServer)
+		}
+		c.SdkMcpServers[name] = srv
+	}
 }
 
 func WithMCPServer(name string, cfg MCPServerConfig) Option {
