@@ -22,29 +22,36 @@ def load_traces(trace_dir: str) -> list[dict]:
     sessions = []
     trace_path = Path(trace_dir)
 
-    # Group files by timestamp prefix
-    timestamps = set()
+    # Group files by prefix (tag_timestamp or just timestamp).
+    # Extract the full prefix before _args/_stdin/_stdout/_stderr.
+    prefixes = set()
     for f in trace_path.iterdir():
-        if f.suffix in (".ndjson", ".txt"):
-            ts = f.name.split("_")[0]
-            timestamps.add(ts)
+        name = f.name
+        for suffix in ("_args.txt", "_stdin.ndjson", "_stdout.ndjson", "_stderr.txt"):
+            if name.endswith(suffix):
+                prefix = name[: -len(suffix)]
+                prefixes.add(prefix)
 
-    for ts in sorted(timestamps):
-        session = {"timestamp": ts}
+    for prefix in sorted(prefixes):
+        # Extract tag if present (tag_timestamp format).
+        parts = prefix.rsplit("_", 1)
+        tag = parts[0] if len(parts) > 1 and not parts[0].isdigit() else ""
 
-        args_file = trace_path / f"{ts}_args.txt"
+        session = {"prefix": prefix, "tag": tag}
+
+        args_file = trace_path / f"{prefix}_args.txt"
         if args_file.exists():
             session["args"] = args_file.read_text().strip()
 
-        stdin_file = trace_path / f"{ts}_stdin.ndjson"
+        stdin_file = trace_path / f"{prefix}_stdin.ndjson"
         if stdin_file.exists():
             session["stdin"] = parse_ndjson(stdin_file.read_text())
 
-        stdout_file = trace_path / f"{ts}_stdout.ndjson"
+        stdout_file = trace_path / f"{prefix}_stdout.ndjson"
         if stdout_file.exists():
             session["stdout"] = parse_ndjson(stdout_file.read_text())
 
-        stderr_file = trace_path / f"{ts}_stderr.txt"
+        stderr_file = trace_path / f"{prefix}_stderr.txt"
         if stderr_file.exists():
             session["stderr"] = stderr_file.read_text().strip()
 
@@ -101,17 +108,22 @@ def extract_cli_flags(args: str) -> dict:
 
 def compare_sessions(py_sessions: list[dict], go_sessions: list[dict]):
     """Compare Python and Go trace sessions."""
-    print(f"Python sessions: {len(py_sessions)}")
-    print(f"Go sessions:     {len(go_sessions)}")
+    # Filter out version checks (args ending with '-v' or just a version command).
+    py_real = [s for s in py_sessions if not s.get("args", "").rstrip().endswith("-v")]
+    go_real = [s for s in go_sessions if not s.get("args", "").rstrip().endswith("-v")]
+
+    print(f"Python sessions: {len(py_sessions)} total, {len(py_real)} real")
+    print(f"Go sessions:     {len(go_sessions)} total, {len(go_real)} real")
     print()
 
-    n = min(len(py_sessions), len(go_sessions))
+    n = min(len(py_real), len(go_real))
 
     for i in range(n):
-        py = py_sessions[i]
-        go = go_sessions[i]
+        py = py_real[i]
+        go = go_real[i]
 
-        print(f"=== Session {i + 1} ===")
+        label = py.get("tag") or go.get("tag") or f"session {i + 1}"
+        print(f"=== {label} ===")
 
         # Compare CLI args
         py_flags = extract_cli_flags(py.get("args", ""))

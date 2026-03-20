@@ -1,0 +1,43 @@
+# Runs Python SDK e2e tests with the Go sniffer intercepting all CLI traffic.
+#
+# The sniffer binary replaces `claude` in PATH. The real CLI is renamed to
+# `claude-real`. All NDJSON stdin/stdout/args are saved to /traces.
+
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install real Claude CLI, move aside
+RUN curl -fsSL https://claude.ai/install.sh | bash \
+    && cp /root/.local/bin/claude /usr/local/bin/claude-real
+
+# Install Python SDK
+RUN pip install claude-agent-sdk
+
+# Copy pre-built sniffer binary as `claude`
+COPY scripts/claude-sniffer /usr/local/bin/claude
+RUN chmod +x /usr/local/bin/claude
+
+ENV CLAUDE_SNIFFER_REAL=/usr/local/bin/claude-real
+ENV CLAUDE_SNIFFER_DIR=/traces
+
+# Clone Python SDK for e2e tests
+RUN git clone --depth 1 https://github.com/anthropics/claude-agent-sdk-python.git /sdk
+
+# Install test deps
+RUN cd /sdk && pip install -e ".[dev]"
+
+# Create non-root user (same as Go container)
+RUN useradd -m -s /bin/bash claude \
+    && echo '{}' > /home/claude/.claude.json \
+    && mkdir -p /home/claude/.claude /traces \
+    && chown -R claude:claude /home/claude /traces /sdk
+
+USER claude
+WORKDIR /sdk
+
+CMD ["python", "-m", "pytest", "e2e-tests/", "-v", "-m", "e2e"]
