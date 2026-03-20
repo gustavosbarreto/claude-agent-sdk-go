@@ -158,10 +158,10 @@ func TestBuildArgs_MCPServers(t *testing.T) {
 	})
 
 	s := strings.Join(args, " ")
-	if !strings.Contains(s, "--mcp-servers") {
-		t.Error("missing --mcp-servers")
+	if !strings.Contains(s, "--mcp-config") {
+		t.Error("missing --mcp-config")
 	}
 	if !strings.Contains(s, "mydb") {
-		t.Error("missing server name in --mcp-servers JSON")
+		t.Error("missing server name in --mcp-config JSON")
 	}
 }
