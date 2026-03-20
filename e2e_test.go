@@ -973,6 +973,52 @@ func TestE2E_CanUseTool(t *testing.T) {
 	t.Logf("callback invocations: %d", len(invocations))
 }
 
+func TestE2E_Interrupt(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	session, err := claude.NewSession(ctx, defaultOpts()...)
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	// Start a long query via ToChan so we can interrupt mid-stream.
+	ch := claude.ToChan(session.Send(ctx, "Count from 1 to 100, one number per line."))
+
+	// Read a few messages then send interrupt.
+	msgCount := 0
+	for me := range ch {
+		if me.Err != nil {
+			t.Logf("error after %d messages: %v", msgCount, me.Err)
+			break
+		}
+		msgCount++
+
+		// After receiving some messages, interrupt.
+		if msgCount >= 2 {
+			t.Log("sending interrupt")
+			if err := session.Interrupt(); err != nil {
+				t.Logf("interrupt: %v", err)
+			}
+			// Drain remaining messages.
+			for me := range ch {
+				if me.Err != nil {
+					break
+				}
+				msgCount++
+			}
+			break
+		}
+	}
+
+	t.Logf("total messages after interrupt: %d", msgCount)
+	// No strong assertions — just verify interrupt doesn't crash.
+	// Matching Python SDK test_interrupt pattern.
+}
+
 // typeName returns a short name for a message type.
 func typeName(msg claude.Message) string {
 	switch msg.(type) {
