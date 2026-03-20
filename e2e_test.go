@@ -729,6 +729,60 @@ func TestE2E_PartialMessages_DisabledByDefault(t *testing.T) {
 	}
 }
 
+func TestE2E_Hook_PermissionDeny(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	var hookInvocations []string
+
+	matcher := "Bash"
+	messages := collectMessages(t, ctx, "Run this bash command: echo 'hello'",
+		claude.WithPermissionMode(claude.PermissionAcceptEdits),
+		claude.WithAllowedTools("Bash", "Write"),
+		claude.WithNoPersistSession(),
+		claude.WithHook(claude.HookPreToolUse, claude.HookCallbackMatcher{
+			Matcher: &matcher,
+			Hooks: []claude.HookCallback{
+				func(ctx context.Context, input claude.HookInput) (claude.HookOutput, error) {
+					hookInvocations = append(hookInvocations, input.ToolName)
+					t.Logf("hook: deny %s", input.ToolName)
+
+					if input.ToolName == "Bash" {
+						return claude.HookOutput{
+							Reason:         "Bash blocked by test hook",
+							SystemMessage:  "Command blocked by hook",
+							Decision:       "deny",
+							DecisionReason: "Security policy: Bash blocked",
+						}, nil
+					}
+
+					return claude.HookOutput{
+						Decision:       "allow",
+						DecisionReason: "Tool passed security checks",
+					}, nil
+				},
+			},
+		}),
+	)
+
+	assertMessageOrder(t, messages)
+
+	// Hook should have been invoked for Bash.
+	hasBash := false
+	for _, name := range hookInvocations {
+		if name == "Bash" {
+			hasBash = true
+		}
+	}
+	if !hasBash {
+		t.Error("hook should have been invoked for Bash tool")
+	}
+
+	t.Logf("hook invocations: %v", hookInvocations)
+}
+
 // typeName returns a short name for a message type.
 func typeName(msg claude.Message) string {
 	switch msg.(type) {
