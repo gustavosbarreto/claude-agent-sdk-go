@@ -53,9 +53,7 @@ func TestBuildArgs_Streaming(t *testing.T) {
 	if !strings.Contains(s, "--verbose") {
 		t.Error("missing --verbose")
 	}
-	if !strings.Contains(s, "--replay-user-messages") {
-		t.Error("missing --replay-user-messages")
-	}
+	// --replay-user-messages is NOT sent (matching Python SDK).
 }
 
 func TestBuildArgs_BypassPermissions(t *testing.T) {
@@ -114,8 +112,8 @@ func TestBuildArgs_AllOptions(t *testing.T) {
 
 	checks := []string{
 		"--model claude-opus-4-6",
-		"--allowed-tools Bash,Read",
-		"--disallowed-tools Write",
+		"--allowedTools Bash,Read",
+		"--disallowedTools Write",
 		"--permission-mode acceptEdits",
 		"--max-turns 10",
 		"--max-budget-usd 5",

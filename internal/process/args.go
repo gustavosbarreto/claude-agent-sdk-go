@@ -58,9 +58,8 @@ type Config struct {
 func BuildArgs(cfg Config) []string {
 	args := []string{"--output-format", "stream-json", "--verbose", "--input-format", "stream-json"}
 
-	if cfg.Streaming {
-		args = append(args, "--replay-user-messages")
-	}
+	// Note: --replay-user-messages is NOT sent (matching Python SDK).
+	// The CLI echoes user messages back without this flag.
 
 	if cfg.Model != "" {
 		args = append(args, "--model", cfg.Model)
@@ -71,11 +70,11 @@ func BuildArgs(cfg Config) []string {
 	// Note: cwd is set via cmd.Dir in process.Start(), not as a CLI flag.
 
 	if len(cfg.AllowedTools) > 0 {
-		args = append(args, "--allowed-tools", strings.Join(cfg.AllowedTools, ","))
+		args = append(args, "--allowedTools", strings.Join(cfg.AllowedTools, ","))
 	}
 
 	if len(cfg.DisallowedTools) > 0 {
-		args = append(args, "--disallowed-tools", strings.Join(cfg.DisallowedTools, ","))
+		args = append(args, "--disallowedTools", strings.Join(cfg.DisallowedTools, ","))
 	}
 
 	args = appendTools(args, cfg.Tools)
@@ -256,14 +255,15 @@ func BuildArgs(cfg Config) []string {
 
 func appendSystemPrompt(args []string, sp any) []string {
 	if sp == nil {
+		// Always pass --system-prompt (matching Python SDK).
+		// Empty string means "no custom system prompt".
+		args = append(args, "--system-prompt", "")
 		return args
 	}
 
 	switch v := sp.(type) {
 	case string:
-		if v != "" {
-			args = append(args, "--system-prompt", v)
-		}
+		args = append(args, "--system-prompt", v)
 	default:
 		// Preset struct: {Text, Preset, Append}
 		if data, err := json.Marshal(v); err == nil {
