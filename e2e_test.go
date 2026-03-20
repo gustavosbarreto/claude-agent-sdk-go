@@ -830,6 +830,43 @@ func TestE2E_Hook_StopReason(t *testing.T) {
 	t.Logf("hook invocations: %v", hookInvocations)
 }
 
+func TestE2E_Hook_AdditionalContext(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	var hookInvoked bool
+
+	matcher := "Bash"
+	messages := collectMessages(t, ctx, "Run: echo 'testing hooks'",
+		claude.WithPermissionMode(claude.PermissionAcceptEdits),
+		claude.WithAllowedTools("Bash"),
+		claude.WithNoPersistSession(),
+		claude.WithHook(claude.HookPostToolUse, claude.HookCallbackMatcher{
+			Matcher: &matcher,
+			Hooks: []claude.HookCallback{
+				func(ctx context.Context, input claude.HookInput) (claude.HookOutput, error) {
+					hookInvoked = true
+					t.Logf("hook: additionalContext for %s", input.ToolName)
+
+					return claude.HookOutput{
+						SystemMessage:    "Additional context provided by hook",
+						Reason:           "Hook providing monitoring feedback",
+						AdditionalContext: "The command executed successfully with hook monitoring",
+					}, nil
+				},
+			},
+		}),
+	)
+
+	assertMessageOrder(t, messages)
+
+	if !hookInvoked {
+		t.Error("PostToolUse hook with additionalContext should have been invoked")
+	}
+}
+
 // typeName returns a short name for a message type.
 func typeName(msg claude.Message) string {
 	switch msg.(type) {
