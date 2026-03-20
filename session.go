@@ -24,6 +24,10 @@ type Session struct {
 	closed    bool
 	mu        sync.Mutex
 
+	// hookCallbacks maps callback IDs to hook functions.
+	// Populated during initialize and used by dispatchControlRequest.
+	hookCallbacks map[string]HookCallback
+
 	// messages is fed by the reader goroutine. Send() consumes it.
 	messages chan messageOrEOF
 	// readerDone is closed when the reader goroutine exits.
@@ -36,6 +40,7 @@ type messageOrEOF struct {
 }
 
 // NewSession creates a new multi-turn session.
+// Sends an initialize control request to register hooks and agents with the CLI.
 func NewSession(ctx context.Context, opts ...Option) (*Session, error) {
 	cfg := applyOptions(opts)
 	procCfg := toProcessConfig(cfg, true)
@@ -47,16 +52,67 @@ func NewSession(ctx context.Context, opts ...Option) (*Session, error) {
 
 	mux := protocol.NewMux(proc)
 
+	// Build hook callback registry: assign IDs to each callback function
+	// so the CLI can reference them in hook_callback control requests.
+	hookCallbacks := make(map[string]HookCallback)
+	nextID := 0
+
 	s := &Session{
-		proc:       proc,
-		mux:        mux,
-		cfg:        cfg,
-		messages:   make(chan messageOrEOF, 64),
-		readerDone: make(chan struct{}),
+		proc:          proc,
+		mux:           mux,
+		cfg:           cfg,
+		hookCallbacks: hookCallbacks,
+		messages:      make(chan messageOrEOF, 64),
+		readerDone:    make(chan struct{}),
 	}
 
 	go drainStderr(proc, cfg.StderrCallback)
 	go s.readLoop()
+
+	// Send initialize request with hooks and agents config.
+	// This matches the Python SDK's initialize flow.
+	initReq := map[string]any{
+		"subtype": "initialize",
+	}
+
+	if len(cfg.Hooks) > 0 {
+		hooksConfig := make(map[string]any)
+		for event, matchers := range cfg.Hooks {
+			var matcherConfigs []map[string]any
+			for _, m := range matchers {
+				var callbackIDs []string
+				for _, hook := range m.Hooks {
+					id := fmt.Sprintf("hook_%d", nextID)
+					nextID++
+					hookCallbacks[id] = hook
+					callbackIDs = append(callbackIDs, id)
+				}
+				mc := map[string]any{
+					"hookCallbackIds": callbackIDs,
+				}
+				if m.Matcher != nil {
+					mc["matcher"] = *m.Matcher
+				}
+				if m.Timeout != nil {
+					mc["timeout"] = *m.Timeout
+				}
+				matcherConfigs = append(matcherConfigs, mc)
+			}
+			hooksConfig[string(event)] = matcherConfigs
+		}
+		initReq["hooks"] = hooksConfig
+	}
+
+	if len(cfg.Agents) > 0 {
+		initReq["agents"] = cfg.Agents
+	}
+
+	// Always send initialize to register hooks/agents with the CLI.
+	// This matches the Python SDK which always calls initialize().
+	if _, err := s.mux.Send("initialize", initReq); err != nil {
+		_ = proc.Close()
+		return nil, fmt.Errorf("claude: initialize: %w", err)
+	}
 
 	return s, nil
 }
@@ -130,7 +186,10 @@ func (s *Session) readLoop() {
 // dispatchControlRequest handles a control request from the CLI.
 func (s *Session) dispatchControlRequest(requestID string, request json.RawMessage) error {
 	var body struct {
-		Subtype string `json:"subtype"`
+		Subtype    string          `json:"subtype"`
+		CallbackID string          `json:"callback_id,omitempty"`
+		Input      json.RawMessage `json:"input,omitempty"`
+		ToolUseID  string          `json:"tool_use_id,omitempty"`
 	}
 	if json.Unmarshal(request, &body) != nil {
 		return s.mux.SendErrorResponse(requestID, "failed to parse request")
@@ -139,11 +198,82 @@ func (s *Session) dispatchControlRequest(requestID string, request json.RawMessa
 	switch body.Subtype {
 	case "can_use_tool":
 		return handleCanUseTool(s.mux, s.cfg, requestID, request)
+
 	case "hook_callback":
-		return handleHookCallback(s.mux, s.cfg, requestID, request)
+		// Look up callback by ID (registered during initialize).
+		callback, ok := s.hookCallbacks[body.CallbackID]
+		if !ok {
+			return s.mux.SendErrorResponse(requestID,
+				fmt.Sprintf("no hook callback found for ID: %s", body.CallbackID))
+		}
+
+		var input HookInput
+		_ = json.Unmarshal(body.Input, &input)
+
+		output, err := callback(context.Background(), input)
+		if err != nil {
+			return s.mux.SendErrorResponse(requestID, err.Error())
+		}
+
+		// Format output matching the CLI's expected format.
+		// The Python SDK passes the hook output dict directly as the response.
+		return s.mux.SendResponse(requestID, formatHookOutput(output, input.HookEventName))
+
 	default:
 		return s.mux.SendErrorResponse(requestID, "unsupported: "+body.Subtype)
 	}
+}
+
+// formatHookOutput converts a flat HookOutput to the nested format the CLI expects.
+func formatHookOutput(o HookOutput, hookEventName string) map[string]any {
+	result := make(map[string]any)
+
+	if o.Continue != nil {
+		result["continue"] = *o.Continue
+	}
+	if o.Reason != "" {
+		result["reason"] = o.Reason
+	}
+	if o.SystemMessage != "" {
+		result["systemMessage"] = o.SystemMessage
+	}
+	if o.SuppressOutput {
+		result["suppressOutput"] = true
+	}
+	if o.StopReason != "" {
+		result["stopReason"] = o.StopReason
+	}
+
+	// Build hookSpecificOutput if any hook-specific fields are set.
+	specific := make(map[string]any)
+
+	if o.Decision != "" {
+		specific["permissionDecision"] = o.Decision
+	}
+	if o.DecisionReason != "" {
+		specific["permissionDecisionReason"] = o.DecisionReason
+	}
+	if o.UpdatedInput != nil {
+		specific["updatedInput"] = o.UpdatedInput
+	}
+	if o.AdditionalContext != "" {
+		specific["additionalContext"] = o.AdditionalContext
+	}
+	if o.UpdatedMCPToolOutput != nil {
+		specific["updatedMCPToolOutput"] = o.UpdatedMCPToolOutput
+	}
+	if o.BlockStop {
+		specific["blockStop"] = true
+	}
+
+	if len(specific) > 0 {
+		if hookEventName != "" {
+			specific["hookEventName"] = hookEventName
+		}
+		result["hookSpecificOutput"] = specific
+	}
+
+	return result
 }
 
 // ResumeSession resumes a previous session by ID.

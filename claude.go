@@ -192,39 +192,6 @@ func handleCanUseTool(mux *protocol.Mux, cfg *Config, requestID string, request 
 	return mux.SendResponse(requestID, result)
 }
 
-func handleHookCallback(mux *protocol.Mux, cfg *Config, requestID string, request json.RawMessage) error {
-	var req struct {
-		HookEventName string          `json:"hook_event_name"`
-		Body          json.RawMessage `json:"body"`
-	}
-	if json.Unmarshal(request, &req) != nil {
-		return mux.SendErrorResponse(requestID, "failed to parse hook callback")
-	}
-
-	event := HookEvent(req.HookEventName)
-	matchers, ok := cfg.Hooks[event]
-	if !ok || len(matchers) == 0 {
-		return mux.SendResponse(requestID, map[string]any{})
-	}
-
-	var input HookInput
-	_ = json.Unmarshal(req.Body, &input)
-
-	ctx := context.Background()
-	var lastOutput HookOutput
-	for _, m := range matchers {
-		for _, hook := range m.Hooks {
-			output, err := hook(ctx, input)
-			if err != nil {
-				return mux.SendErrorResponse(requestID, err.Error())
-			}
-			lastOutput = output
-		}
-	}
-
-	return mux.SendResponse(requestID, lastOutput)
-}
-
 // drainStderr reads stderr line by line and calls the callback per line.
 // Matches the Python SDK behavior where the callback receives one line at a time
 // with trailing whitespace stripped.

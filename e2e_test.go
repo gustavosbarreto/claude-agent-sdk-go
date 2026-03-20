@@ -420,26 +420,30 @@ func TestE2E_Hook_PreToolUse(t *testing.T) {
 
 	var invocations []hookInvocation
 
-	messages := collectMessages(t, ctx, "Read the file /etc/hostname",
-		defaultOpts(
-			claude.WithMaxTurns(3),
-			claude.WithHook(claude.HookPreToolUse, claude.HookCallbackMatcher{
-				Hooks: []claude.HookCallback{
-					func(ctx context.Context, input claude.HookInput) (claude.HookOutput, error) {
-						invocations = append(invocations, hookInvocation{
-							toolName:  input.ToolName,
-							toolUseID: input.ToolUseID,
-						})
-						t.Logf("hook fired: tool=%s tool_use_id=%s", input.ToolName, input.ToolUseID)
+	matcher := "Bash"
+	messages := collectMessages(t, ctx, "Run: echo 'test hook'",
+		claude.WithPermissionMode(claude.PermissionAcceptEdits),
+		claude.WithAllowedTools("Bash"),
+		claude.WithNoPersistSession(),
+		claude.WithMaxTurns(3),
+		claude.WithHook(claude.HookPreToolUse, claude.HookCallbackMatcher{
+			Matcher: &matcher,
+			Hooks: []claude.HookCallback{
+				func(ctx context.Context, input claude.HookInput) (claude.HookOutput, error) {
+					invocations = append(invocations, hookInvocation{
+						toolName:  input.ToolName,
+						toolUseID: input.ToolUseID,
+					})
+					t.Logf("hook fired: tool=%s tool_use_id=%s", input.ToolName, input.ToolUseID)
 
-						// Return with additionalContext like the Python tests do.
-						return claude.HookOutput{
-							AdditionalContext: "Hook approved this tool call",
-						}, nil
-					},
+					return claude.HookOutput{
+						Decision:          "allow",
+						DecisionReason:    "Approved with context",
+						AdditionalContext: "This command is running in a test environment",
+					}, nil
 				},
-			}),
-		)...,
+			},
+		}),
 	)
 
 	assertMessageOrder(t, messages)
@@ -448,7 +452,10 @@ func TestE2E_Hook_PreToolUse(t *testing.T) {
 	assertResultOK(t, result)
 	t.Logf("result=%q hooks_fired=%d", result.Result, len(invocations))
 
-	// Log invocations even if hook didn't fire (may not fire in bypass mode).
+	// Hook should have been invoked for Bash.
+	if len(invocations) == 0 {
+		t.Error("PreToolUse hook should have been invoked")
+	}
 	for i, inv := range invocations {
 		t.Logf("invocation[%d]: tool=%s tool_use_id=%s", i, inv.toolName, inv.toolUseID)
 		if inv.toolUseID == "" {

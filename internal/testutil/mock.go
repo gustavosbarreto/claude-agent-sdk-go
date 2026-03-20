@@ -34,7 +34,15 @@ func MockStreamingCLIScript(initLines []string, responseTurns [][]string) (strin
 
 	sb.WriteString("TURN=0\n")
 	sb.WriteString("while IFS= read -r input; do\n")
+	// Skip control_response messages (sent by SDK in response to our requests).
 	sb.WriteString("  case \"$input\" in *control_response*) continue ;; esac\n")
+	// Respond to control_request messages (e.g. initialize) with success.
+	sb.WriteString("  case \"$input\" in *control_request*)\n")
+	sb.WriteString("    REQ_ID=$(echo \"$input\" | sed 's/.*request_id\":\"\\([^\"]*\\).*/\\1/')\n")
+	sb.WriteString("    echo \"{\\\"type\\\":\\\"control_response\\\",\\\"response\\\":{\\\"subtype\\\":\\\"success\\\",\\\"request_id\\\":\\\"$REQ_ID\\\",\\\"response\\\":{}}}\"\n")
+	sb.WriteString("    continue\n")
+	sb.WriteString("  ;; esac\n")
+	// Only process user messages for turn responses.
 	sb.WriteString("  case \"$input\" in *'\"type\":\"user\"'*) ;; *) continue ;; esac\n")
 
 	for i, turn := range responseTurns {

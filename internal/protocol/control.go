@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/shellhub-io/claude-agent-sdk-go/internal/process"
 )
+
+const defaultControlTimeout = 60 * time.Second
 
 // ControlRequest is a request from the CLI to the SDK (or vice versa).
 type ControlRequest struct {
@@ -67,8 +70,14 @@ func (m *Mux) nextID() string {
 	return fmt.Sprintf("sdk_%d", n)
 }
 
-// Send sends a control request to the CLI and waits for the response.
+// Send sends a control request to the CLI and waits for the response
+// with the default timeout (60s), matching the Python SDK.
 func (m *Mux) Send(subtype string, payload any) (json.RawMessage, error) {
+	return m.SendWithTimeout(subtype, payload, defaultControlTimeout)
+}
+
+// SendWithTimeout sends a control request and waits up to the given timeout.
+func (m *Mux) SendWithTimeout(subtype string, payload any, timeout time.Duration) (json.RawMessage, error) {
 	id := m.nextID()
 
 	ch := make(chan ControlResponseBody, 1)
@@ -108,13 +117,15 @@ func (m *Mux) Send(subtype string, payload any) (json.RawMessage, error) {
 		return nil, fmt.Errorf("write control request: %w", err)
 	}
 
-	resp := <-ch
-
-	if resp.Subtype == "error" {
-		return nil, fmt.Errorf("control error: %s", resp.Error)
+	select {
+	case resp := <-ch:
+		if resp.Subtype == "error" {
+			return nil, fmt.Errorf("control error: %s", resp.Error)
+		}
+		return resp.Response, nil
+	case <-time.After(timeout):
+		return nil, fmt.Errorf("control request timeout: %s", subtype)
 	}
-
-	return resp.Response, nil
 }
 
 // HandleResponse routes a control response to the waiting sender.
