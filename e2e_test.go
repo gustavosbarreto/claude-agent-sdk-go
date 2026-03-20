@@ -1019,6 +1019,54 @@ func TestE2E_Interrupt(t *testing.T) {
 	// Matching Python SDK test_interrupt pattern.
 }
 
+func TestE2E_SetPermissionMode(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	session, err := claude.NewSession(ctx,
+		claude.WithPermissionMode(claude.PermissionDefault),
+		claude.WithNoPersistSession(),
+	)
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	// Change to acceptEdits
+	if err := session.SetPermissionMode(claude.PermissionAcceptEdits); err != nil {
+		t.Fatalf("SetPermissionMode to acceptEdits: %v", err)
+	}
+
+	// Turn 1
+	for msg, err := range session.Send(ctx, "What is 2+2? Just the number.") {
+		if err != nil {
+			t.Fatalf("turn 1: %v", err)
+		}
+		if r, ok := msg.(*claude.ResultMessage); ok {
+			assertResultOK(t, r)
+			t.Logf("turn 1 (acceptEdits): %s", r.Result)
+		}
+	}
+
+	// Change back to default
+	if err := session.SetPermissionMode(claude.PermissionDefault); err != nil {
+		t.Fatalf("SetPermissionMode to default: %v", err)
+	}
+
+	// Turn 2
+	for msg, err := range session.Send(ctx, "What is 3+3? Just the number.") {
+		if err != nil {
+			t.Fatalf("turn 2: %v", err)
+		}
+		if r, ok := msg.(*claude.ResultMessage); ok {
+			assertResultOK(t, r)
+			t.Logf("turn 2 (default): %s", r.Result)
+		}
+	}
+}
+
 // typeName returns a short name for a message type.
 func typeName(msg claude.Message) string {
 	switch msg.(type) {
