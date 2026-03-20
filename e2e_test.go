@@ -867,6 +867,56 @@ func TestE2E_Hook_AdditionalContext(t *testing.T) {
 	}
 }
 
+func TestE2E_Hook_MultipleHooks(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	var invocations []string
+
+	trackHook := func(ctx context.Context, input claude.HookInput) (claude.HookOutput, error) {
+		invocations = append(invocations, input.HookEventName)
+		t.Logf("hook: %s", input.HookEventName)
+		return claude.HookOutput{}, nil
+	}
+
+	matcher := "Bash"
+	messages := collectMessages(t, ctx, "Run: echo 'multi-hook test'",
+		claude.WithPermissionMode(claude.PermissionAcceptEdits),
+		claude.WithAllowedTools("Bash"),
+		claude.WithNoPersistSession(),
+		claude.WithHook(claude.HookNotification, claude.HookCallbackMatcher{
+			Hooks: []claude.HookCallback{trackHook},
+		}),
+		claude.WithHook(claude.HookPreToolUse, claude.HookCallbackMatcher{
+			Matcher: &matcher,
+			Hooks:   []claude.HookCallback{trackHook},
+		}),
+		claude.WithHook(claude.HookPostToolUse, claude.HookCallbackMatcher{
+			Matcher: &matcher,
+			Hooks:   []claude.HookCallback{trackHook},
+		}),
+	)
+
+	assertMessageOrder(t, messages)
+
+	eventNames := make(map[string]bool)
+	for _, name := range invocations {
+		eventNames[name] = true
+	}
+
+	t.Logf("hook invocations: %v", invocations)
+
+	// At minimum, PreToolUse and PostToolUse should fire for the Bash command.
+	if !eventNames["PreToolUse"] {
+		t.Error("PreToolUse hook should have fired")
+	}
+	if !eventNames["PostToolUse"] {
+		t.Error("PostToolUse hook should have fired")
+	}
+}
+
 // typeName returns a short name for a message type.
 func typeName(msg claude.Message) string {
 	switch msg.(type) {
