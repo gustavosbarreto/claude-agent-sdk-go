@@ -235,8 +235,13 @@ func (s *Session) Interrupt() error {
 }
 
 // SetModel changes the model mid-session.
+// Pass an empty string to reset to the default model.
 func (s *Session) SetModel(model string) error {
-	_, err := s.mux.Send("set_model", map[string]any{"model": model})
+	var modelVal any = model
+	if model == "" {
+		modelVal = nil
+	}
+	_, err := s.mux.Send("set_model", map[string]any{"model": modelVal})
 	return err
 }
 
