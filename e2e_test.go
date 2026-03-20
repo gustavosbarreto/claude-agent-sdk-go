@@ -783,6 +783,53 @@ func TestE2E_Hook_PermissionDeny(t *testing.T) {
 	t.Logf("hook invocations: %v", hookInvocations)
 }
 
+func TestE2E_Hook_StopReason(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	var hookInvocations []string
+
+	matcher := "Bash"
+	messages := collectMessages(t, ctx, "Run: echo 'test message'",
+		claude.WithPermissionMode(claude.PermissionAcceptEdits),
+		claude.WithAllowedTools("Bash"),
+		claude.WithNoPersistSession(),
+		claude.WithHook(claude.HookPostToolUse, claude.HookCallbackMatcher{
+			Matcher: &matcher,
+			Hooks: []claude.HookCallback{
+				func(ctx context.Context, input claude.HookInput) (claude.HookOutput, error) {
+					hookInvocations = append(hookInvocations, input.ToolName)
+					t.Logf("hook: stop after %s", input.ToolName)
+
+					cont := false
+					return claude.HookOutput{
+						Continue:      &cont,
+						StopReason:    "Execution halted by test hook for validation",
+						Reason:        "Testing continue and stopReason fields",
+						SystemMessage: "Test hook stopped execution",
+					}, nil
+				},
+			},
+		}),
+	)
+
+	assertMessageOrder(t, messages)
+
+	hasBash := false
+	for _, name := range hookInvocations {
+		if name == "Bash" {
+			hasBash = true
+		}
+	}
+	if !hasBash {
+		t.Error("PostToolUse hook should have been invoked for Bash")
+	}
+
+	t.Logf("hook invocations: %v", hookInvocations)
+}
+
 // typeName returns a short name for a message type.
 func typeName(msg claude.Message) string {
 	switch msg.(type) {
