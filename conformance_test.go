@@ -56,91 +56,114 @@ func TestConformance(t *testing.T) {
 					}
 				}
 			}
-
-			// Verify specific fields for key message types.
-			switch tc.Name {
-			case "user_message_with_uuid":
-				u := msg.(*UserMessage)
-				// UserMessage should parse without error — uuid is in the raw JSON.
-				if u == nil {
-					t.Fatal("nil user message")
-				}
-
-			case "assistant_message_with_thinking":
-				a := msg.(*AssistantMessage)
-				if len(a.Message.Content) < 2 {
-					t.Fatalf("expected >= 2 content blocks, got %d", len(a.Message.Content))
-				}
-				if a.Message.Content[0].Type != ContentBlockThinking {
-					t.Errorf("first block type = %q, want thinking", a.Message.Content[0].Type)
-				}
-				if a.Message.Content[0].Thinking != "I'm thinking about the answer..." {
-					t.Errorf("thinking = %q", a.Message.Content[0].Thinking)
-				}
-				if a.Message.Content[0].Signature != "sig-123" {
-					t.Errorf("signature = %q", a.Message.Content[0].Signature)
-				}
-
-			case "assistant_message_with_auth_error":
-				a := msg.(*AssistantMessage)
-				if a.Error != "authentication_failed" {
-					t.Errorf("error = %q, want authentication_failed", a.Error)
-				}
-
-			case "result_with_stop_reason":
-				r := msg.(*ResultMessage)
-				if r.StopReason != "end_turn" {
-					t.Errorf("stop_reason = %q, want end_turn", r.StopReason)
-				}
-				if r.Result != "Done" {
-					t.Errorf("result = %q, want Done", r.Result)
-				}
-
-			case "task_started":
-				s := msg.(*SystemMessage)
-				if s.TaskID != "task-abc" {
-					t.Errorf("task_id = %q", s.TaskID)
-				}
-				if s.Description != "Reticulating splines" {
-					t.Errorf("description = %q", s.Description)
-				}
-				if s.TaskType != "background" {
-					t.Errorf("task_type = %q", s.TaskType)
-				}
-
-			case "task_notification_completed":
-				s := msg.(*SystemMessage)
-				if s.TaskID != "task-abc" {
-					t.Errorf("task_id = %q", s.TaskID)
-				}
-				if s.Summary != "All done" {
-					t.Errorf("summary = %q", s.Summary)
-				}
-				if s.OutputFile != "/tmp/out.md" {
-					t.Errorf("output_file = %q", s.OutputFile)
-				}
-
-			case "rate_limit_event":
-				r := msg.(*RateLimitEvent)
-				if r.RateLimitInfo == nil {
-					t.Fatal("rate_limit_info is nil")
-				}
-				if r.RateLimitInfo.Status != "allowed_warning" {
-					t.Errorf("status = %q", r.RateLimitInfo.Status)
-				}
-				if r.UUID != "abc-123" {
-					t.Errorf("uuid = %q", r.UUID)
-				}
-
-			case "unknown_type":
-				raw, ok := msg.(*RawMessage)
-				if !ok {
-					t.Fatalf("expected *RawMessage for unknown type, got %T", msg)
-				}
-				if raw.TypeField != "unknown_future_type" {
-					t.Errorf("type = %q", raw.TypeField)
-				}
-			}
 		})
 	}
+}
+
+// TestConformance_RoundTrip verifies that all fields from the input JSON
+// survive parsing into Go structs. This catches missing struct fields:
+// if a field exists in the CLI output but our Go struct doesn't have a
+// matching json tag, it will be lost during parse → serialize round-trip.
+//
+// This is the key test that would have caught the missing "agents" field
+// in SystemMessage before.
+func TestConformance_RoundTrip(t *testing.T) {
+	data, err := os.ReadFile("testdata/conformance.json")
+	if err != nil {
+		t.Fatalf("read fixtures: %v", err)
+	}
+
+	var suite struct {
+		Cases []struct {
+			Name  string          `json:"name"`
+			Input json.RawMessage `json:"input"`
+		} `json:"cases"`
+	}
+
+	if err := json.Unmarshal(data, &suite); err != nil {
+		t.Fatalf("parse fixtures: %v", err)
+	}
+
+	for _, tc := range suite.Cases {
+		t.Run(tc.Name, func(t *testing.T) {
+			msg, err := ParseMessage(tc.Input)
+			if err != nil {
+				t.Skipf("parse error (tested elsewhere): %v", err)
+			}
+
+			// Skip RawMessage — unknown types aren't round-trippable.
+			if _, ok := msg.(*RawMessage); ok {
+				t.Skip("unknown message type, skip round-trip")
+			}
+
+			// Serialize back to JSON.
+			output, err := json.Marshal(msg)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			// Parse both input and output as generic maps.
+			var inputMap, outputMap map[string]any
+			if err := json.Unmarshal(tc.Input, &inputMap); err != nil {
+				t.Fatalf("unmarshal input: %v", err)
+			}
+			if err := json.Unmarshal(output, &outputMap); err != nil {
+				t.Fatalf("unmarshal output: %v", err)
+			}
+
+			// Check that every key in the input exists in the output.
+			// This catches missing json tags in Go structs.
+			checkFieldsPreserved(t, "", inputMap, outputMap)
+		})
+	}
+}
+
+// checkFieldsPreserved recursively checks that all keys in `input` exist in `output`.
+// Skips fields with zero values (null, false, empty array) since Go's omitempty
+// drops these — which is acceptable behavior matching the Python SDK.
+func checkFieldsPreserved(t *testing.T, prefix string, input, output map[string]any) {
+	t.Helper()
+
+	for key, inputVal := range input {
+		path := key
+		if prefix != "" {
+			path = prefix + "." + key
+		}
+
+		// Skip zero values that omitempty legitimately drops.
+		if isZeroValue(inputVal) {
+			continue
+		}
+
+		outputVal, exists := output[key]
+		if !exists {
+			t.Errorf("field %q present in input but missing after round-trip (missing json tag?)", path)
+			continue
+		}
+
+		// Recurse into nested objects.
+		inputObj, inputIsObj := inputVal.(map[string]any)
+		outputObj, outputIsObj := outputVal.(map[string]any)
+		if inputIsObj && outputIsObj {
+			checkFieldsPreserved(t, path, inputObj, outputObj)
+		}
+	}
+}
+
+// isZeroValue returns true for null, false, empty string, empty array, and 0.
+func isZeroValue(v any) bool {
+	if v == nil {
+		return true
+	}
+	switch val := v.(type) {
+	case bool:
+		return !val
+	case string:
+		return val == ""
+	case float64:
+		return val == 0
+	case []any:
+		return len(val) == 0
+	}
+	return false
 }

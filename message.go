@@ -50,6 +50,7 @@ type SystemMessage struct {
 	SlashCommands []string `json:"slash_commands,omitempty"`
 	OutputStyle string    `json:"output_style,omitempty"`
 	Skills    []string    `json:"skills,omitempty"`
+	Agents    []string    `json:"agents,omitempty"`
 
 	// Status subtype fields.
 	Status string `json:"status,omitempty"` // "compacting", null
@@ -124,15 +125,17 @@ type MCPServerStatus struct {
 
 // AssistantMessage is Claude's response containing content blocks.
 type AssistantMessage struct {
-	Type    MessageType `json:"type"`
-	UUID    string      `json:"uuid,omitempty"`
-	Model   string      `json:"model,omitempty"`
-	Message struct {
-		Role    string         `json:"role"`
-		Content []ContentBlock `json:"content"`
+	Type      MessageType `json:"type"`
+	UUID      string      `json:"uuid,omitempty"`
+	SessionID string      `json:"session_id,omitempty"`
+	Message   struct {
+		Role    string          `json:"role"`
+		Content []ContentBlock  `json:"content"`
+		Model   string          `json:"model,omitempty"`
+		Usage   json.RawMessage `json:"usage,omitempty"`
 	} `json:"message"`
+	ParentToolUseID *string `json:"parent_tool_use_id,omitempty"`
 	// Error is the error type string (e.g. "authentication_failed", "rate_limit", "unknown").
-	// Present when the CLI reports an API-level error on this message.
 	Error string `json:"error,omitempty"`
 }
 
@@ -141,12 +144,15 @@ func (m *AssistantMessage) messageType() MessageType { return MessageTypeAssista
 // UserMessage is a user message echoed back by the CLI.
 type UserMessage struct {
 	Type    MessageType `json:"type"`
+	UUID    string      `json:"uuid,omitempty"`
 	Message struct {
 		Role    string          `json:"role"`
 		Content json.RawMessage `json:"content"`
 	} `json:"message"`
-	IsSynthetic bool `json:"isSynthetic,omitempty"`
-	IsReplay    bool `json:"isReplay,omitempty"`
+	ParentToolUseID *string         `json:"parent_tool_use_id,omitempty"`
+	ToolUseResult   json.RawMessage `json:"tool_use_result,omitempty"`
+	IsSynthetic     bool            `json:"isSynthetic,omitempty"`
+	IsReplay        bool            `json:"isReplay,omitempty"`
 }
 
 func (m *UserMessage) messageType() MessageType { return MessageTypeUser }
@@ -158,8 +164,8 @@ type ResultMessage struct {
 	UUID                     string           `json:"uuid,omitempty"`
 	SessionID                string           `json:"session_id,omitempty"`
 	Result                   string           `json:"result,omitempty"`
-	IsError                  bool             `json:"is_error,omitempty"`
-	StopReason               string           `json:"stop_reason,omitempty"`
+	IsError                  bool             `json:"is_error"`
+	StopReason               *string          `json:"stop_reason"`
 	TotalCostUSD             float64          `json:"total_cost_usd,omitempty"`
 	DurationMS               float64          `json:"duration_ms,omitempty"`
 	DurationAPIMS            float64          `json:"duration_api_ms,omitempty"`
@@ -267,9 +273,10 @@ func (m *RateLimitEvent) messageType() MessageType { return MessageTypeRateLimit
 
 // RateLimitInfo contains rate limit details.
 type RateLimitInfo struct {
-	Status      string  `json:"status"` // allowed, allowed_warning, rejected
-	ResetsAt    *int64  `json:"resetsAt,omitempty"`
-	Utilization float64 `json:"utilization,omitempty"`
+	Status        string  `json:"status"` // allowed, allowed_warning, rejected
+	ResetsAt      *int64  `json:"resetsAt,omitempty"`
+	RateLimitType string  `json:"rateLimitType,omitempty"`
+	Utilization   float64 `json:"utilization,omitempty"`
 }
 
 // PromptSuggestionMessage carries a predicted next user prompt.
