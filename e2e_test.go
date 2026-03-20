@@ -537,14 +537,19 @@ func TestE2E_StderrCallback_WithoutDebug(t *testing.T) {
 func TestE2E_IncludePartialMessages(t *testing.T) {
 	skipIfNoE2E(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
-	messages := collectMessages(t, ctx, "Write a haiku about Go programming.",
-		defaultOpts(
-			claude.WithMaxTurns(1),
-			claude.WithIncludePartialMessages(),
-		)...,
+	// Use sonnet with thinking tokens to get ThinkingBlock + TextBlock,
+	// matching the Python SDK test.
+	messages := collectMessages(t, ctx, "Think of three jokes, then tell one",
+		claude.WithModel("claude-sonnet-4-5"),
+		claude.WithMaxTurns(2),
+		claude.WithIncludePartialMessages(),
+		claude.WithEnv(map[string]string{"MAX_THINKING_TOKENS": "8000"}),
+		claude.WithPermissionMode(claude.PermissionBypassPermissions),
+		claude.WithAllowDangerouslySkipPermissions(),
+		claude.WithNoPersistSession(),
 	)
 
 	// Verify ordering and result.
@@ -588,18 +593,24 @@ func TestE2E_IncludePartialMessages(t *testing.T) {
 	}
 	t.Logf("event types: %v", eventTypes)
 
-	// Verify AssistantMessage has TextBlock content.
-	hasText := false
+	// Verify AssistantMessage has ThinkingBlock and TextBlock content.
+	var hasThinking, hasText bool
 	for _, msg := range messages {
 		a, ok := msg.(*claude.AssistantMessage)
 		if !ok {
 			continue
 		}
 		for _, block := range a.Message.Content {
+			if block.Type == claude.ContentBlockThinking && block.Thinking != "" {
+				hasThinking = true
+			}
 			if block.Type == claude.ContentBlockText && block.Text != "" {
 				hasText = true
 			}
 		}
+	}
+	if !hasThinking {
+		t.Error("no ThinkingBlock found in AssistantMessages")
 	}
 	if !hasText {
 		t.Error("no TextBlock found in AssistantMessages")
@@ -620,6 +631,57 @@ func TestE2E_IncludePartialMessages(t *testing.T) {
 	}
 	if !gotResult {
 		t.Error("missing ResultMessage alongside stream events")
+	}
+}
+
+func TestE2E_IncludePartialMessages_ThinkingDeltas(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	var thinkingDeltas []string
+
+	for msg, err := range claude.Query(ctx, "Think step by step about what 2 + 2 equals",
+		claude.WithModel("claude-sonnet-4-5"),
+		claude.WithMaxTurns(2),
+		claude.WithIncludePartialMessages(),
+		claude.WithEnv(map[string]string{"MAX_THINKING_TOKENS": "8000"}),
+		claude.WithPermissionMode(claude.PermissionBypassPermissions),
+		claude.WithAllowDangerouslySkipPermissions(),
+		claude.WithNoPersistSession(),
+	) {
+		if err != nil {
+			t.Fatalf("Query: %v", err)
+		}
+		if se, ok := msg.(*claude.StreamEvent); ok {
+			var evt struct {
+				Type  string `json:"type"`
+				Delta struct {
+					Type     string `json:"type"`
+					Thinking string `json:"thinking"`
+				} `json:"delta"`
+			}
+			if json.Unmarshal(se.Event, &evt) == nil &&
+				evt.Type == "content_block_delta" &&
+				evt.Delta.Type == "thinking_delta" {
+				thinkingDeltas = append(thinkingDeltas, evt.Delta.Thinking)
+			}
+		}
+	}
+
+	if len(thinkingDeltas) == 0 {
+		t.Error("no thinking deltas received")
+	}
+
+	combined := strings.Join(thinkingDeltas, "")
+	t.Logf("thinking deltas: %d, combined length: %d", len(thinkingDeltas), len(combined))
+
+	if len(combined) < 10 {
+		t.Error("thinking content too short")
+	}
+	if !strings.Contains(strings.ToLower(combined), "2") {
+		t.Error("thinking doesn't mention the numbers")
 	}
 }
 
