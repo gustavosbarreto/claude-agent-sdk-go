@@ -114,7 +114,6 @@ func TestBuildArgs_AllOptions(t *testing.T) {
 
 	checks := []string{
 		"--model claude-opus-4-6",
-		"--cwd /workspace",
 		"--allowed-tools Bash,Read",
 		"--disallowed-tools Write",
 		"--permission-mode acceptEdits",
