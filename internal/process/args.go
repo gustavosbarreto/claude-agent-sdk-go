@@ -68,9 +68,7 @@ func BuildArgs(cfg Config) []string {
 
 	args = appendSystemPrompt(args, cfg.SystemPrompt)
 
-	if cfg.Cwd != "" {
-		args = append(args, "--cwd", cfg.Cwd)
-	}
+	// Note: cwd is set via cmd.Dir in process.Start(), not as a CLI flag.
 
 	if len(cfg.AllowedTools) > 0 {
 		args = append(args, "--allowed-tools", strings.Join(cfg.AllowedTools, ","))
@@ -187,9 +185,9 @@ func BuildArgs(cfg Config) []string {
 		args = append(args, "--debug")
 	}
 
-	if len(cfg.SettingSources) > 0 {
-		args = append(args, "--setting-sources", strings.Join(cfg.SettingSources, ","))
-	}
+	// Always pass --setting-sources (matching Python SDK).
+	// Empty string means "load no settings" (SDK isolation mode).
+	args = append(args, "--setting-sources", strings.Join(cfg.SettingSources, ","))
 
 	if cfg.Settings != nil {
 		switch v := cfg.Settings.(type) {

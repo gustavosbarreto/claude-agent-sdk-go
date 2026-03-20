@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -1065,6 +1066,98 @@ func TestE2E_SetPermissionMode(t *testing.T) {
 			t.Logf("turn 2 (default): %s", r.Result)
 		}
 	}
+}
+
+func TestE2E_SettingSources_Default(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// Create temp project with local settings.
+	projectDir := t.TempDir()
+	claudeDir := filepath.Join(projectDir, ".claude")
+	os.MkdirAll(claudeDir, 0o755)
+	os.WriteFile(filepath.Join(claudeDir, "settings.local.json"),
+		[]byte(`{"outputStyle": "local-test-style"}`), 0o644)
+
+	// No setting_sources — should default to no settings loaded.
+	// Matching Python: ClaudeAgentOptions(cwd=project_dir, max_turns=1)
+	session, err := claude.NewSession(ctx,
+		claude.WithCwd(projectDir),
+		claude.WithMaxTurns(1),
+		claude.WithNoPersistSession(),
+	)
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	var initMsg *claude.SystemMessage
+	for msg, err := range session.Send(ctx, "What is 2+2? Just the number.") {
+		if err != nil {
+			t.Fatalf("Send: %v", err)
+		}
+		if sys, ok := msg.(*claude.SystemMessage); ok && sys.Subtype == "init" {
+			initMsg = sys
+		}
+	}
+
+	if initMsg != nil && initMsg.OutputStyle == "local-test-style" {
+		t.Error("outputStyle should NOT be from local settings when setting_sources not set")
+	}
+	if initMsg != nil {
+		t.Logf("output_style: %q", initMsg.OutputStyle)
+	}
+}
+
+func TestE2E_SettingSources_ProjectIncluded(t *testing.T) {
+	skipIfNoE2E(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// Create temp project with local settings.
+	projectDir := t.TempDir()
+	claudeDir := filepath.Join(projectDir, ".claude")
+	os.MkdirAll(claudeDir, 0o755)
+	os.WriteFile(filepath.Join(claudeDir, "settings.local.json"),
+		[]byte(`{"outputStyle": "local-test-style"}`), 0o644)
+
+	// Include user + project + local — should load local settings.
+	// Matching Python: ClaudeAgentOptions(setting_sources=["user","project","local"], cwd=project_dir, max_turns=1)
+	session, err := claude.NewSession(ctx,
+		claude.WithCwd(projectDir),
+		claude.WithMaxTurns(1),
+		claude.WithNoPersistSession(),
+		claude.WithSettingSources(
+			claude.SettingSourceUser,
+			claude.SettingSourceProject,
+			claude.SettingSourceLocal,
+		),
+	)
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+
+	var initMsg *claude.SystemMessage
+	for msg, err := range session.Send(ctx, "What is 2+2? Just the number.") {
+		if err != nil {
+			t.Fatalf("Send: %v", err)
+		}
+		if sys, ok := msg.(*claude.SystemMessage); ok && sys.Subtype == "init" {
+			initMsg = sys
+		}
+	}
+
+	if initMsg == nil {
+		t.Fatal("no init message")
+	}
+	if initMsg.OutputStyle != "local-test-style" {
+		t.Errorf("outputStyle should be 'local-test-style', got %q", initMsg.OutputStyle)
+	}
+	t.Logf("output_style: %q", initMsg.OutputStyle)
 }
 
 // typeName returns a short name for a message type.
