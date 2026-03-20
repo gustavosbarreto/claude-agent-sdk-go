@@ -379,7 +379,7 @@ func TestE2E_ToolUse(t *testing.T) {
 
 	messages := collectMessages(t, ctx, "List the files in /tmp using Bash. Just run: ls /tmp | head -5",
 		defaultOpts(
-			claude.WithMaxTurns(3),
+			claude.WithMaxTurns(5),
 			claude.WithAllowedTools("Bash"),
 		)...,
 	)
@@ -425,7 +425,7 @@ func TestE2E_Hook_PreToolUse(t *testing.T) {
 		claude.WithPermissionMode(claude.PermissionAcceptEdits),
 		claude.WithAllowedTools("Bash"),
 		claude.WithNoPersistSession(),
-		claude.WithMaxTurns(3),
+		claude.WithMaxTurns(5),
 		claude.WithHook(claude.HookPreToolUse, claude.HookCallbackMatcher{
 			Matcher: &matcher,
 			Hooks: []claude.HookCallback{

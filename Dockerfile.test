@@ -1,0 +1,40 @@
+# Clean container for running e2e tests.
+# No host settings, permissions, or MCP configs — only Claude auth.
+#
+# Two-stage: builds Go test binary, then runs in clean environment with Claude CLI.
+
+FROM golang:1.26 AS builder
+
+WORKDIR /src
+COPY go.mod go.sum* ./
+RUN go mod download 2>/dev/null || true
+COPY . .
+RUN go test -c -o /e2e.test .
+
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Claude Code CLI as root, then make it accessible globally
+RUN curl -fsSL https://claude.ai/install.sh | bash \
+    && cp /root/.local/bin/claude /usr/local/bin/claude
+
+# Create non-root user (CLI rejects --dangerously-skip-permissions as root)
+RUN useradd -m -s /bin/bash claude \
+    && echo '{}' > /home/claude/.claude.json \
+    && mkdir -p /home/claude/.claude \
+    && chown -R claude:claude /home/claude
+
+# Copy test binary and test data (as root, before USER switch)
+COPY --from=builder /e2e.test /workspace/e2e.test
+COPY --from=builder /src/testdata /workspace/testdata
+RUN chmod +x /workspace/e2e.test
+
+USER claude
+WORKDIR /workspace
+
+ENTRYPOINT ["/workspace/e2e.test"]
+CMD ["-test.v", "-test.run", "TestE2E_[^C]", "-test.timeout=5m"]
