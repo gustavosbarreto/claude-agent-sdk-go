@@ -8,6 +8,7 @@ Go SDK for the Claude Code CLI. Wraps the `claude` binary as a subprocess, commu
 claude.go                     ← Prompt() one-shot, Query() iterator
 session.go                    ← NewSession, Send, StreamInput (multi-turn)
 sessions.go                   ← ListSessions, GetSessionMessages (discovery)
+session_mutations.go          ← RenameSession, TagSession, DeleteSession
 message.go                    ← All message types + ParseMessage()
 content.go                    ← ContentBlock (text, thinking, tool_use, tool_result)
 option.go                     ← Config + 40+ With* functional options
