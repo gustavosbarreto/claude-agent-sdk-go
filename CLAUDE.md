@@ -71,7 +71,7 @@ Test parsing, options, errors, and SDK logic using mock CLI scripts (no API key,
 ```bash
 go test . -v -count=1                    # Root package: message parsing, options, mock sessions
 go test ./internal/process/ -v -count=1  # CLI argument builder
-go test ./... -v -count=1 -race          # Everything (unit + conformance, e2e skipped)
+go test ./... -v -count=1 -race -short   # Everything (unit + conformance, e2e skipped)
 ```
 
 Files: `message_test.go`, `mock_test.go` (root), `internal/process/args_test.go`.
