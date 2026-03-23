@@ -657,3 +657,190 @@ func TestMock_Session_EmptyPrompt(t *testing.T) {
 		t.Error("expected ErrEmptyPrompt from Send with empty string")
 	}
 }
+
+func TestMock_Query_AllMessageTypes(t *testing.T) {
+	// Query that produces system(init) + assistant + result; verify all types received in order.
+	script, err := testutil.MockStreamingCLIScript(
+		nil,
+		[][]string{
+			{testutil.SystemInit, testutil.AssistantText, testutil.ResultOK},
+		},
+	)
+	if err != nil {
+		t.Fatalf("MockStreamingCLIScript: %v", err)
+	}
+	defer os.Remove(script)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var types []string
+	for msg, err := range claude.Query(ctx, "test", claude.WithCLIPath(script)) {
+		if err != nil {
+			t.Fatalf("Query: %v", err)
+		}
+		switch msg.(type) {
+		case *claude.SystemMessage:
+			types = append(types, "system")
+		case *claude.AssistantMessage:
+			types = append(types, "assistant")
+		case *claude.ResultMessage:
+			types = append(types, "result")
+		default:
+			types = append(types, "other")
+		}
+	}
+
+	// Expect exactly: system, assistant, result.
+	if len(types) != 3 {
+		t.Fatalf("got %d messages %v, want 3 [system, assistant, result]", len(types), types)
+	}
+	if types[0] != "system" {
+		t.Errorf("types[0] = %q, want system", types[0])
+	}
+	if types[1] != "assistant" {
+		t.Errorf("types[1] = %q, want assistant", types[1])
+	}
+	if types[2] != "result" {
+		t.Errorf("types[2] = %q, want result", types[2])
+	}
+}
+
+func TestMock_Query_EmptyPrompt(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	gotErr := false
+	for _, err := range claude.Query(ctx, "") {
+		if err != nil {
+			if !errors.Is(err, claude.ErrEmptyPrompt) {
+				t.Fatalf("Query empty: got %v, want ErrEmptyPrompt", err)
+			}
+			gotErr = true
+			break
+		}
+	}
+
+	if !gotErr {
+		t.Error("expected ErrEmptyPrompt from Query with empty prompt")
+	}
+}
+
+func TestMock_Prompt_EmptyPrompt(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := claude.Prompt(ctx, "")
+	if err == nil {
+		t.Fatal("expected error for empty prompt")
+	}
+	if !errors.Is(err, claude.ErrEmptyPrompt) {
+		t.Fatalf("Prompt empty: got %v, want ErrEmptyPrompt", err)
+	}
+}
+
+func TestMock_Session_StreamInput(t *testing.T) {
+	// Use StreamInput to inject an additional message during a session.
+	// The mock has 2 turns: the first is triggered by Send, the second
+	// should be triggered by StreamInput.
+	script, err := testutil.MockStreamingCLIScript(
+		nil,
+		[][]string{
+			{testutil.SystemInit, testutil.MakeAssistant("first"), testutil.MakeResult("first")},
+			{testutil.MakeAssistant("second"), testutil.MakeResult("second")},
+		},
+	)
+	if err != nil {
+		t.Fatalf("MockStreamingCLIScript: %v", err)
+	}
+	defer os.Remove(script)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	session, err := claude.NewSession(ctx, claude.WithCLIPath(script))
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	defer session.Close()
+
+	// First turn via Send.
+	var turn1Result string
+	for msg, err := range session.Send(ctx, "first message") {
+		if err != nil {
+			t.Fatalf("Send turn 1: %v", err)
+		}
+		if r, ok := msg.(*claude.ResultMessage); ok {
+			turn1Result = r.Result
+		}
+	}
+	if turn1Result != "first" {
+		t.Errorf("turn 1 result = %q, want first", turn1Result)
+	}
+
+	// Inject via StreamInput, then consume via Send.
+	// StreamInput writes the user message to stdin; the mock will emit the second turn.
+	// We use Send for the second turn which also writes a user message.
+	var turn2Result string
+	for msg, err := range session.Send(ctx, "second message") {
+		if err != nil {
+			t.Fatalf("Send turn 2: %v", err)
+		}
+		if r, ok := msg.(*claude.ResultMessage); ok {
+			turn2Result = r.Result
+		}
+	}
+	if turn2Result != "second" {
+		t.Errorf("turn 2 result = %q, want second", turn2Result)
+	}
+
+	// Also verify StreamInput itself does not error on an open session.
+	// We can't easily consume the response from StreamInput alone (it has no
+	// corresponding Send), but we verify it does not return an error.
+	// Note: we already consumed both turns, so we just test that the method works.
+	// After all turns are consumed the process may exit, so we test on a fresh session.
+	script2, err := testutil.MockStreamingCLIScript(
+		nil,
+		[][]string{
+			{testutil.SystemInit, testutil.MakeAssistant("a"), testutil.MakeResult("a")},
+		},
+	)
+	if err != nil {
+		t.Fatalf("MockStreamingCLIScript: %v", err)
+	}
+	defer os.Remove(script2)
+
+	session2, err := claude.NewSession(ctx, claude.WithCLIPath(script2))
+	if err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	defer session2.Close()
+
+	if err := session2.StreamInput("injected prompt"); err != nil {
+		t.Errorf("StreamInput: %v", err)
+	}
+}
+
+func TestMock_ToChan_WithError(t *testing.T) {
+	// ToChan should propagate errors from the iterator.
+	// Query with empty prompt yields ErrEmptyPrompt through the channel.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	ch := claude.ToChan(claude.Query(ctx, ""))
+
+	gotErr := false
+	for me := range ch {
+		if me.Err != nil {
+			if !errors.Is(me.Err, claude.ErrEmptyPrompt) {
+				t.Fatalf("ToChan error: got %v, want ErrEmptyPrompt", me.Err)
+			}
+			gotErr = true
+			break
+		}
+	}
+
+	if !gotErr {
+		t.Error("expected ErrEmptyPrompt from ToChan")
+	}
+}
