@@ -3,7 +3,7 @@
 // Claude CLI sniffer — transparent proxy between the SDK and the real claude binary.
 // Logs all stdin/stdout NDJSON traffic with zero buffering.
 //
-// Build: go build -o claude-sniffer scripts/claude-sniffer.go
+// Build: go build -o tests/sniffer/claude-sniffer tests/sniffer/main.go
 // Usage: CLAUDE_SNIFFER_DIR=/tmp/traces ./claude-sniffer [claude args...]
 package main
 

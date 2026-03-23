@@ -19,7 +19,7 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
 RUN pip install claude-agent-sdk
 
 # Copy pre-built sniffer binary as `claude`
-COPY scripts/claude-sniffer /usr/local/bin/claude
+COPY tests/sniffer/claude-sniffer /usr/local/bin/claude
 RUN chmod +x /usr/local/bin/claude
 
 ENV CLAUDE_SNIFFER_REAL=/usr/local/bin/claude-real

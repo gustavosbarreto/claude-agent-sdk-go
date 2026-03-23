@@ -1,4 +1,4 @@
-package claude_test
+package e2e_test
 
 import (
 	"context"
@@ -16,13 +16,13 @@ import (
 // TestE2E_Container builds the test image and runs all e2e tests inside
 // a clean Docker container with no host settings or permissions.
 //
-// Run: CLAUDE_E2E=1 go test -v -run TestE2E_Container -timeout 10m
+// Run: go test ./tests/e2e/ -v -count=1 -run TestE2E_Container -timeout 10m
 func TestE2E_Container(t *testing.T) {
-	if os.Getenv("CLAUDE_E2E") == "" {
-		t.Skip("set CLAUDE_E2E=1 to run e2e tests")
-	}
 	if os.Getenv("INSIDE_CONTAINER") != "" {
 		t.Skip("already inside container")
+	}
+	if testing.Short() {
+		t.Skip("container e2e skipped in short mode")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -36,14 +36,12 @@ func TestE2E_Container(t *testing.T) {
 
 	req := testcontainers.ContainerRequest{
 		FromDockerfile: testcontainers.FromDockerfile{
-			Context:       ".",
-			Dockerfile:    "Dockerfile.test",
+			Context:       "../..",
+			Dockerfile:    "tests/e2e/Dockerfile",
 			PrintBuildLog: true,
 			KeepImage:     true,
 		},
-		Env: map[string]string{
-			"CLAUDE_E2E": "1",
-		},
+		Env: map[string]string{},
 		WaitingFor: wait.ForExit().WithExitTimeout(10 * time.Minute),
 	}
 

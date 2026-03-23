@@ -1,10 +1,23 @@
-package claude
+package conformance_test
 
 import (
 	"encoding/json"
 	"os"
 	"testing"
+
+	claude "github.com/shellhub-io/claude-agent-sdk-go"
 )
+
+// messageType extracts the JSON "type" field from a parsed Message.
+// Used instead of the unexported messageType() method.
+func messageType(msg claude.Message) string {
+	raw, _ := json.Marshal(msg)
+	var m struct {
+		Type string `json:"type"`
+	}
+	_ = json.Unmarshal(raw, &m)
+	return m.Type
+}
 
 // TestConformance runs test cases extracted from the official Python SDK
 // (anthropics/claude-agent-sdk-python tests/test_message_parser.py).
@@ -30,7 +43,7 @@ func TestConformance(t *testing.T) {
 
 	for _, tc := range suite.Cases {
 		t.Run(tc.Name, func(t *testing.T) {
-			msg, err := ParseMessage(tc.Input)
+			msg, err := claude.ParseMessage(tc.Input)
 			if err != nil {
 				t.Fatalf("ParseMessage failed: %v", err)
 			}
@@ -38,7 +51,7 @@ func TestConformance(t *testing.T) {
 				t.Fatal("ParseMessage returned nil")
 			}
 
-			gotType := string(msg.messageType())
+			gotType := messageType(msg)
 			if gotType != tc.ExpectType {
 				t.Errorf("type = %q, want %q", gotType, tc.ExpectType)
 			}
@@ -46,11 +59,11 @@ func TestConformance(t *testing.T) {
 			// Verify subtypes for system and result messages.
 			if tc.ExpectSubtype != "" {
 				switch m := msg.(type) {
-				case *SystemMessage:
+				case *claude.SystemMessage:
 					if m.Subtype != tc.ExpectSubtype {
 						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
 					}
-				case *ResultMessage:
+				case *claude.ResultMessage:
 					if string(m.Subtype) != tc.ExpectSubtype {
 						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
 					}
@@ -64,9 +77,6 @@ func TestConformance(t *testing.T) {
 // survive parsing into Go structs. This catches missing struct fields:
 // if a field exists in the CLI output but our Go struct doesn't have a
 // matching json tag, it will be lost during parse → serialize round-trip.
-//
-// This is the key test that would have caught the missing "agents" field
-// in SystemMessage before.
 func TestConformance_RoundTrip(t *testing.T) {
 	data, err := os.ReadFile("testdata/conformance.json")
 	if err != nil {
@@ -86,13 +96,13 @@ func TestConformance_RoundTrip(t *testing.T) {
 
 	for _, tc := range suite.Cases {
 		t.Run(tc.Name, func(t *testing.T) {
-			msg, err := ParseMessage(tc.Input)
+			msg, err := claude.ParseMessage(tc.Input)
 			if err != nil {
 				t.Skipf("parse error (tested elsewhere): %v", err)
 			}
 
 			// Skip RawMessage — unknown types aren't round-trippable.
-			if _, ok := msg.(*RawMessage); ok {
+			if _, ok := msg.(*claude.RawMessage); ok {
 				t.Skip("unknown message type, skip round-trip")
 			}
 
@@ -112,7 +122,6 @@ func TestConformance_RoundTrip(t *testing.T) {
 			}
 
 			// Check that every key in the input exists in the output.
-			// This catches missing json tags in Go structs.
 			checkFieldsPreserved(t, "", inputMap, outputMap)
 		})
 	}

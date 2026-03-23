@@ -9,7 +9,7 @@ WORKDIR /src
 COPY go.mod go.sum* ./
 RUN go mod download 2>/dev/null || true
 COPY . .
-RUN go test -c -o /e2e.test .
+RUN go test -c -o /e2e.test ./tests/e2e/
 
 FROM debian:bookworm-slim
 
@@ -28,9 +28,8 @@ RUN useradd -m -s /bin/bash claude \
     && mkdir -p /home/claude/.claude \
     && chown -R claude:claude /home/claude
 
-# Copy test binary and test data (as root, before USER switch)
+# Copy test binary (as root, before USER switch)
 COPY --from=builder /e2e.test /workspace/e2e.test
-COPY --from=builder /src/testdata /workspace/testdata
 RUN chmod +x /workspace/e2e.test
 
 USER claude

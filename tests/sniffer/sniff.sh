@@ -4,14 +4,14 @@
 # For each test pair (Python + Go equivalent), runs both in containers
 # with the sniffer, then compares the traces.
 #
-# Usage: ./scripts/sniff.sh
+# Usage: ./tests/sniffer/sniff.sh
 #
 # Requires: Docker, ~/.claude/.credentials.json or ANTHROPIC_API_KEY
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TRACE_DIR="/tmp/claude-traces"
 CRED_FILE="$HOME/.claude/.credentials.json"
 
@@ -19,11 +19,11 @@ cd "$PROJECT_DIR"
 
 # --- Build ---
 echo "Building sniffer..."
-GOOS=linux GOARCH=amd64 go build -o scripts/claude-sniffer scripts/claude-sniffer.go
+GOOS=linux GOARCH=amd64 go build -o tests/sniffer/claude-sniffer tests/sniffer/main.go
 
 echo "Building containers..."
-docker build -f Dockerfile.sniffer -t claude-sniff-python -q .
-docker build -f Dockerfile.test -t claude-sniff-go -q .
+docker build -f tests/e2e/Dockerfile.sniffer -t claude-sniff-python -q .
+docker build -f tests/e2e/Dockerfile -t claude-sniff-go -q .
 
 # --- Auth ---
 DOCKER_AUTH=()
@@ -64,7 +64,7 @@ run_go() {
     docker run --rm \
         "${DOCKER_AUTH[@]}" \
         -v "$dir:/traces" \
-        -v "$PROJECT_DIR/scripts/claude-sniffer:/tmp/sniffer:ro" \
+        -v "$PROJECT_DIR/tests/sniffer/claude-sniffer:/tmp/sniffer:ro" \
         -e CLAUDE_SNIFFER_TAG="$tag" \
         --user root \
         --entrypoint sh \
@@ -103,8 +103,8 @@ for tag in "${!TEST_PAIRS[@]}"; do
     run_go "$tag" "$go_test"
 
     echo "--- Compare ---"
-    python3 scripts/compare-traces.py "$TRACE_DIR/$tag/python" "$TRACE_DIR/$tag/go"
+    python3 tests/sniffer/compare-traces.py "$TRACE_DIR/$tag/python" "$TRACE_DIR/$tag/go"
 done
 
 # Cleanup
-rm -f scripts/claude-sniffer
+rm -f tests/sniffer/claude-sniffer

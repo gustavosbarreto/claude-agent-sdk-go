@@ -41,6 +41,5 @@ jobs:
       # Auth via CLAUDE_CODE_OAUTH_TOKEN env var.
       - name: E2E tests (in container)
         env:
-          CLAUDE_E2E: "1"
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-        run: go test -v -count=1 -run TestE2E_Container -timeout 10m
+        run: go test -v -count=1 -run TestE2E_Container -timeout 10m ./tests/e2e/
