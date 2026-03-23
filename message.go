@@ -87,6 +87,30 @@ type SystemMessage struct {
 
 func (m *SystemMessage) messageType() MessageType { return MessageTypeSystem }
 
+// TaskStartedMessage is emitted when a background task starts.
+// Parsed from system messages with subtype "task_started".
+type TaskStartedMessage struct {
+	SystemMessage
+}
+
+func (m *TaskStartedMessage) messageType() MessageType { return MessageTypeSystem }
+
+// TaskProgressMessage is emitted while a background task is in progress.
+// Parsed from system messages with subtype "task_progress".
+type TaskProgressMessage struct {
+	SystemMessage
+}
+
+func (m *TaskProgressMessage) messageType() MessageType { return MessageTypeSystem }
+
+// TaskNotificationMessage is emitted when a background task completes, fails, or is stopped.
+// Parsed from system messages with subtype "task_notification".
+type TaskNotificationMessage struct {
+	SystemMessage
+}
+
+func (m *TaskNotificationMessage) messageType() MessageType { return MessageTypeSystem }
+
 // CompactMetadata is attached to compact_boundary system messages.
 type CompactMetadata struct {
 	Trigger   string `json:"trigger"` // manual, auto
@@ -304,6 +328,15 @@ func ParseMessage(line []byte) (Message, error) {
 		var m SystemMessage
 		if err := json.Unmarshal(line, &m); err != nil {
 			return nil, &ParseError{Line: string(line), Err: err}
+		}
+		// Dispatch task subtypes to dedicated types (matching Python SDK).
+		switch m.Subtype {
+		case "task_started":
+			return &TaskStartedMessage{SystemMessage: m}, nil
+		case "task_progress":
+			return &TaskProgressMessage{SystemMessage: m}, nil
+		case "task_notification":
+			return &TaskNotificationMessage{SystemMessage: m}, nil
 		}
 		return &m, nil
 

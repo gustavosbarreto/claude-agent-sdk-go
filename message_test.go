@@ -238,19 +238,19 @@ func TestParseMessage_SystemTaskNotification(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	sys, ok := msg.(*SystemMessage)
+	tn, ok := msg.(*TaskNotificationMessage)
 	if !ok {
-		t.Fatalf("expected *SystemMessage, got %T", msg)
+		t.Fatalf("expected *TaskNotificationMessage, got %T", msg)
 	}
 
-	if sys.Subtype != "task_notification" {
-		t.Errorf("subtype = %q", sys.Subtype)
+	if tn.Subtype != "task_notification" {
+		t.Errorf("subtype = %q", tn.Subtype)
 	}
-	if sys.TaskID != "t1" {
-		t.Errorf("task_id = %q", sys.TaskID)
+	if tn.TaskID != "t1" {
+		t.Errorf("task_id = %q", tn.TaskID)
 	}
-	if sys.Summary != "Done" {
-		t.Errorf("summary = %q", sys.Summary)
+	if tn.Summary != "Done" {
+		t.Errorf("summary = %q", tn.Summary)
 	}
 }
 
