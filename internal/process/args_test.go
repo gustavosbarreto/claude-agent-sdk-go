@@ -198,12 +198,13 @@ func TestBuildArgs_SystemPromptString(t *testing.T) {
 	if val != "Be helpful" {
 		t.Errorf("expected system prompt %q, got %q", "Be helpful", val)
 	}
-	if containsFlag(args, "--system-prompt-preset") {
-		t.Error("should not have --system-prompt-preset for plain string prompt")
+	if containsFlag(args, "--append-system-prompt") {
+		t.Error("should not have --append-system-prompt for plain string prompt")
 	}
 }
 
 func TestBuildArgs_SystemPromptPreset(t *testing.T) {
+	// Matching Python SDK: preset without append sends no system prompt flags.
 	args := BuildArgs(Config{
 		SystemPrompt: struct {
 			Preset bool   `json:"preset"`
@@ -211,19 +212,19 @@ func TestBuildArgs_SystemPromptPreset(t *testing.T) {
 		}{Preset: true},
 	})
 
-	val, ok := flagValue(args, "--system-prompt-preset")
-	if !ok {
-		t.Fatal("missing --system-prompt-preset flag")
+	if containsFlag(args, "--system-prompt") {
+		t.Error("should not have --system-prompt for preset")
 	}
-	if val != "claude_code" {
-		t.Errorf("expected preset %q, got %q", "claude_code", val)
+	if containsFlag(args, "--append-system-prompt") {
+		t.Error("should not have --append-system-prompt (not used by Python SDK)")
 	}
-	if containsFlag(args, "--system-prompt-append") {
-		t.Error("should not have --system-prompt-append when append is empty")
+	if containsFlag(args, "--append-system-prompt") {
+		t.Error("should not have --append-system-prompt when append is empty")
 	}
 }
 
 func TestBuildArgs_SystemPromptPresetAppend(t *testing.T) {
+	// Matching Python SDK: preset with append sends only --append-system-prompt.
 	args := BuildArgs(Config{
 		SystemPrompt: struct {
 			Preset bool   `json:"preset"`
@@ -231,17 +232,13 @@ func TestBuildArgs_SystemPromptPresetAppend(t *testing.T) {
 		}{Preset: true, Append: "Be concise."},
 	})
 
-	val, ok := flagValue(args, "--system-prompt-preset")
-	if !ok {
-		t.Fatal("missing --system-prompt-preset flag")
-	}
-	if val != "claude_code" {
-		t.Errorf("expected preset %q, got %q", "claude_code", val)
+	if containsFlag(args, "--system-prompt") {
+		t.Error("should not have --system-prompt for preset")
 	}
 
-	appendVal, ok := flagValue(args, "--system-prompt-append")
+	appendVal, ok := flagValue(args, "--append-system-prompt")
 	if !ok {
-		t.Fatal("missing --system-prompt-append flag")
+		t.Fatal("missing --append-system-prompt flag")
 	}
 	if appendVal != "Be concise." {
 		t.Errorf("expected append %q, got %q", "Be concise.", appendVal)

@@ -274,9 +274,10 @@ func appendSystemPrompt(args []string, sp any) []string {
 			}
 			if json.Unmarshal(data, &obj) == nil {
 				if obj.Preset {
-					args = append(args, "--system-prompt-preset", "claude_code")
+					// Matching Python SDK: preset without append sends nothing;
+					// preset with append sends only --append-system-prompt.
 					if obj.Append != "" {
-						args = append(args, "--system-prompt-append", obj.Append)
+						args = append(args, "--append-system-prompt", obj.Append)
 					}
 				} else if obj.Text != "" {
 					args = append(args, "--system-prompt", obj.Text)
