@@ -8,8 +8,8 @@ import (
 	"iter"
 	"strings"
 
-	"github.com/shellhub-io/claude-agent-sdk-go/internal/process"
-	"github.com/shellhub-io/claude-agent-sdk-go/internal/protocol"
+	"github.com/gustavosbarreto/claude-agent-sdk-go/internal/process"
+	"github.com/gustavosbarreto/claude-agent-sdk-go/internal/protocol"
 )
 
 // Prompt runs a one-shot prompt and returns the result.

@@ -51,7 +51,7 @@ func validateSessionID(sessionID string) error {
 
 // RenameSession renames a session by appending a custom-title entry to its JSONL file.
 // The most recent custom-title entry wins when listing sessions.
-func RenameSession(sessionID, title string, dir string) error {
+func RenameSession(sessionID, title, dir string) error {
 	if err := validateSessionID(sessionID); err != nil {
 		return err
 	}

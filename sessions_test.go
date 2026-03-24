@@ -371,7 +371,7 @@ func TestExtractSessionSummary_LongPrompt(t *testing.T) {
 	dir := t.TempDir()
 	longPrompt := strings.Repeat("a", 300)
 	lines := []string{
-		fmt.Sprintf(`{"type":"user","message":{"role":"user","content":"%s"}}`, longPrompt),
+		fmt.Sprintf(`{"type":"user","message":{"role":"user","content":%q}}`, longPrompt),
 	}
 	path := filepath.Join(dir, "long.jsonl")
 	os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o644)

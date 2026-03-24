@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	claude "github.com/shellhub-io/claude-agent-sdk-go"
+	claude "github.com/gustavosbarreto/claude-agent-sdk-go"
 )
 
 // E2E tests run against the real Claude CLI inside a Docker container.

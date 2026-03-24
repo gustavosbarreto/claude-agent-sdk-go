@@ -105,9 +105,11 @@ func TestProcessError(t *testing.T) {
 	})
 
 	t.Run("implements error interface", func(t *testing.T) {
-		var err error = &ProcessError{ExitCode: 1}
-		if err == nil {
-			t.Error("ProcessError does not implement error interface")
+		pe := &ProcessError{ExitCode: 1}
+		// Verify ProcessError satisfies the error interface at compile time.
+		var _ error = pe
+		if pe.Error() == "" {
+			t.Error("ProcessError.Error() should not be empty")
 		}
 	})
 }

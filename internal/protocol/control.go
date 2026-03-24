@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/shellhub-io/claude-agent-sdk-go/internal/process"
+	"github.com/gustavosbarreto/claude-agent-sdk-go/internal/process"
 )
 
 const defaultControlTimeout = 60 * time.Second

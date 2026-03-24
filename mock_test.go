@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	claude "github.com/shellhub-io/claude-agent-sdk-go"
-	"github.com/shellhub-io/claude-agent-sdk-go/internal/testutil"
+	claude "github.com/gustavosbarreto/claude-agent-sdk-go"
+	"github.com/gustavosbarreto/claude-agent-sdk-go/internal/testutil"
 )
 
 // Mock tests use shell scripts that simulate the CLI NDJSON protocol.

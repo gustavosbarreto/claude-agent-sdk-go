@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	claude "github.com/shellhub-io/claude-agent-sdk-go"
+	claude "github.com/gustavosbarreto/claude-agent-sdk-go"
 )
 
 // messageType extracts the JSON "type" field from a parsed Message.
