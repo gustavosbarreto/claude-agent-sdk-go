@@ -27,6 +27,17 @@ func flagValue(args []string, flag string) (string, bool) {
 	return "", false
 }
 
+// flagValues returns all values following occurrences of the flag in the args slice.
+func flagValues(args []string, flag string) []string {
+	var vals []string
+	for i, a := range args {
+		if a == flag && i+1 < len(args) {
+			vals = append(vals, args[i+1])
+		}
+	}
+	return vals
+}
+
 func TestBuildArgs_OneShot(t *testing.T) {
 	maxTurns := 5
 	args := BuildArgs(Config{
@@ -151,7 +162,6 @@ func TestBuildArgs_AllOptions(t *testing.T) {
 		"--debug-file /tmp/debug.log",
 		"--setting-sources user,project",
 		"--betas context-1m-2025-08-07",
-		"--additional-directories /extra1,/extra2",
 		"--fallback-model claude-sonnet-4-6",
 		"--prompt-suggestions",
 		"--agent-progress-summaries",
@@ -164,6 +174,12 @@ func TestBuildArgs_AllOptions(t *testing.T) {
 		if !strings.Contains(s, check) {
 			t.Errorf("missing %q in args: %s", check, s)
 		}
+	}
+
+	// Additional dirs use --add-dir per directory (not comma-separated).
+	addDirVals := flagValues(args, "--add-dir")
+	if len(addDirVals) != 2 {
+		t.Errorf("expected 2 --add-dir flags, got %d", len(addDirVals))
 	}
 }
 
@@ -361,9 +377,6 @@ func TestBuildArgs_ToolsArray(t *testing.T) {
 	if val != "Read,Edit,Bash" {
 		t.Errorf("expected tools %q, got %q", "Read,Edit,Bash", val)
 	}
-	if containsFlag(args, "--tools-preset") {
-		t.Error("should not have --tools-preset for array tools")
-	}
 }
 
 func TestBuildArgs_ToolsPreset(t *testing.T) {
@@ -373,41 +386,58 @@ func TestBuildArgs_ToolsPreset(t *testing.T) {
 		}{Preset: true},
 	})
 
-	val, ok := flagValue(args, "--tools-preset")
+	val, ok := flagValue(args, "--tools")
 	if !ok {
-		t.Fatal("missing --tools-preset flag")
+		t.Fatal("missing --tools flag")
 	}
-	if val != "claude_code" {
-		t.Errorf("expected tools preset %q, got %q", "claude_code", val)
+	if val != "default" {
+		t.Errorf("expected tools %q, got %q", "default", val)
 	}
+}
+
+func TestBuildArgs_ToolsEmptyArray(t *testing.T) {
+	// Empty tools array emits --tools "" (disables all tools, matching Python SDK).
+	args := BuildArgs(Config{
+		Tools: []string{},
+	})
+
+	val, ok := flagValue(args, "--tools")
+	if !ok {
+		t.Fatal("missing --tools flag for empty tools array")
+	}
+	if val != "" {
+		t.Errorf("expected empty tools value, got %q", val)
+	}
+}
+
+func TestBuildArgs_ToolsNil(t *testing.T) {
+	// Nil tools emits nothing.
+	args := BuildArgs(Config{
+		Tools: nil,
+	})
+
 	if containsFlag(args, "--tools") {
-		t.Error("should not have --tools when using preset")
+		t.Error("should not have --tools flag when tools is nil")
 	}
 }
 
 func TestBuildArgs_Plugins(t *testing.T) {
 	plugins := []any{
-		map[string]any{"name": "my-plugin", "version": "1.0"},
+		map[string]any{"type": "local", "path": "/home/user/plugins/my-plugin"},
 	}
 	args := BuildArgs(Config{
 		Plugins: plugins,
 	})
 
-	val, ok := flagValue(args, "--plugins")
+	val, ok := flagValue(args, "--plugin-dir")
 	if !ok {
-		t.Fatal("missing --plugins flag")
+		t.Fatal("missing --plugin-dir flag")
 	}
-
-	// Verify it's valid JSON containing the plugin name.
-	var parsed []map[string]any
-	if err := json.Unmarshal([]byte(val), &parsed); err != nil {
-		t.Fatalf("--plugins value is not valid JSON: %v", err)
+	if val != "/home/user/plugins/my-plugin" {
+		t.Errorf("expected plugin dir %q, got %q", "/home/user/plugins/my-plugin", val)
 	}
-	if len(parsed) != 1 {
-		t.Fatalf("expected 1 plugin, got %d", len(parsed))
-	}
-	if parsed[0]["name"] != "my-plugin" {
-		t.Errorf("expected plugin name %q, got %v", "my-plugin", parsed[0]["name"])
+	if containsFlag(args, "--plugins") {
+		t.Error("should not have --plugins flag (use --plugin-dir per plugin)")
 	}
 }
 
@@ -430,19 +460,24 @@ func TestBuildArgs_AdditionalDirs(t *testing.T) {
 		AdditionalDirs: []string{"/home/user/dir1", "/home/user/dir2"},
 	})
 
-	val, ok := flagValue(args, "--additional-directories")
-	if !ok {
-		t.Fatal("missing --additional-directories flag")
+	// Each dir gets its own --add-dir flag (matching Python SDK).
+	vals := flagValues(args, "--add-dir")
+	if len(vals) != 2 {
+		t.Fatalf("expected 2 --add-dir flags, got %d", len(vals))
 	}
-	if val != "/home/user/dir1,/home/user/dir2" {
-		t.Errorf("expected dirs %q, got %q", "/home/user/dir1,/home/user/dir2", val)
+	if vals[0] != "/home/user/dir1" {
+		t.Errorf("expected first dir %q, got %q", "/home/user/dir1", vals[0])
+	}
+	if vals[1] != "/home/user/dir2" {
+		t.Errorf("expected second dir %q, got %q", "/home/user/dir2", vals[1])
+	}
+	if containsFlag(args, "--additional-directories") {
+		t.Error("should not have --additional-directories flag (use --add-dir per dir)")
 	}
 }
 
 func TestBuildArgs_AgentsNotInArgs(t *testing.T) {
 	// Agents are sent via the initialize control message, not CLI args.
-	// However, the current implementation does include --agents in CLI args.
-	// This test documents the current behavior: agents ARE passed as CLI args.
 	args := BuildArgs(Config{
 		Agents: map[string]any{
 			"researcher": map[string]any{
@@ -452,14 +487,9 @@ func TestBuildArgs_AgentsNotInArgs(t *testing.T) {
 		},
 	})
 
-	// Verify agents data is present in args (current behavior).
-	if !containsFlag(args, "--agents") {
-		t.Error("expected --agents flag to be present")
-	}
-
-	val, _ := flagValue(args, "--agents")
-	if !strings.Contains(val, "researcher") {
-		t.Error("expected agents JSON to contain agent name")
+	// Verify agents data is NOT present in args (matching Python/TypeScript SDK).
+	if containsFlag(args, "--agents") {
+		t.Error("--agents flag should not be present; agents are sent via initialize request")
 	}
 }
 
@@ -524,20 +554,113 @@ func TestBuildArgs_Sandbox(t *testing.T) {
 		Sandbox: sandbox,
 	})
 
-	val, ok := flagValue(args, "--sandbox")
+	// Sandbox is merged into --settings (matching Python SDK).
+	val, ok := flagValue(args, "--settings")
 	if !ok {
-		t.Fatal("missing --sandbox flag")
+		t.Fatal("missing --settings flag (sandbox should be merged into settings)")
+	}
+	if containsFlag(args, "--sandbox") {
+		t.Error("should not have --sandbox flag (sandbox is merged into --settings)")
 	}
 
 	var parsed map[string]any
 	if err := json.Unmarshal([]byte(val), &parsed); err != nil {
-		t.Fatalf("--sandbox value is not valid JSON: %v", err)
+		t.Fatalf("--settings value is not valid JSON: %v", err)
 	}
-	if parsed["type"] != "docker" {
-		t.Errorf("expected sandbox type %q, got %v", "docker", parsed["type"])
+	sandboxVal, ok := parsed["sandbox"]
+	if !ok {
+		t.Fatal("--settings JSON missing 'sandbox' key")
 	}
-	if parsed["container"] != "my-sandbox" {
-		t.Errorf("expected sandbox container %q, got %v", "my-sandbox", parsed["container"])
+	sandboxMap, ok := sandboxVal.(map[string]any)
+	if !ok {
+		t.Fatal("sandbox value is not a map")
+	}
+	if sandboxMap["type"] != "docker" {
+		t.Errorf("expected sandbox type %q, got %v", "docker", sandboxMap["type"])
+	}
+	if sandboxMap["container"] != "my-sandbox" {
+		t.Errorf("expected sandbox container %q, got %v", "my-sandbox", sandboxMap["container"])
+	}
+}
+
+func TestBuildArgs_SandboxMergedWithSettings(t *testing.T) {
+	// When both Settings (as JSON string) and Sandbox are provided,
+	// sandbox is merged into the existing settings object.
+	args := BuildArgs(Config{
+		Settings: `{"theme":"dark","fontSize":14}`,
+		Sandbox: map[string]any{
+			"enabled": true,
+			"type":    "docker",
+		},
+	})
+
+	val, ok := flagValue(args, "--settings")
+	if !ok {
+		t.Fatal("missing --settings flag")
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(val), &parsed); err != nil {
+		t.Fatalf("--settings value is not valid JSON: %v", err)
+	}
+
+	// Original settings keys should be preserved.
+	if parsed["theme"] != "dark" {
+		t.Errorf("expected theme %q, got %v", "dark", parsed["theme"])
+	}
+	if parsed["fontSize"] != float64(14) {
+		t.Errorf("expected fontSize 14, got %v", parsed["fontSize"])
+	}
+
+	// Sandbox should be merged in.
+	sandboxVal, ok := parsed["sandbox"]
+	if !ok {
+		t.Fatal("--settings JSON missing 'sandbox' key after merge")
+	}
+	sandboxMap, ok := sandboxVal.(map[string]any)
+	if !ok {
+		t.Fatal("sandbox value is not a map")
+	}
+	if sandboxMap["enabled"] != true {
+		t.Errorf("expected sandbox enabled=true, got %v", sandboxMap["enabled"])
+	}
+	if sandboxMap["type"] != "docker" {
+		t.Errorf("expected sandbox type %q, got %v", "docker", sandboxMap["type"])
+	}
+}
+
+func TestBuildArgs_SandboxMinimal(t *testing.T) {
+	// Minimal sandbox config {enabled: true} should produce --settings {"sandbox":{"enabled":true}}.
+	args := BuildArgs(Config{
+		Sandbox: map[string]any{
+			"enabled": true,
+		},
+	})
+
+	val, ok := flagValue(args, "--settings")
+	if !ok {
+		t.Fatal("missing --settings flag for minimal sandbox")
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(val), &parsed); err != nil {
+		t.Fatalf("--settings value is not valid JSON: %v", err)
+	}
+
+	sandboxVal, ok := parsed["sandbox"]
+	if !ok {
+		t.Fatal("--settings JSON missing 'sandbox' key")
+	}
+	sandboxMap, ok := sandboxVal.(map[string]any)
+	if !ok {
+		t.Fatal("sandbox value is not a map")
+	}
+	if sandboxMap["enabled"] != true {
+		t.Errorf("expected sandbox enabled=true, got %v", sandboxMap["enabled"])
+	}
+	// Should only have the sandbox key at the top level.
+	if len(parsed) != 1 {
+		t.Errorf("expected only 'sandbox' key in settings, got %d keys", len(parsed))
 	}
 }
 
@@ -576,12 +699,12 @@ func TestBuildArgs_OutputFormat(t *testing.T) {
 
 func TestBuildArgs_PermissionModes(t *testing.T) {
 	tests := []struct {
-		name           string
-		mode           string
-		allowBypass    bool
-		expectFlag     string
-		expectValue    string
-		expectNoFlag   string
+		name         string
+		mode         string
+		allowBypass  bool
+		expectFlag   string
+		expectValue  string
+		expectNoFlag string
 	}{
 		{
 			name:         "default mode",

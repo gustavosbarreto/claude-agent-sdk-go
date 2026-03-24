@@ -125,11 +125,8 @@ func BuildArgs(cfg Config) []string {
 		}
 	}
 
-	if len(cfg.Agents) > 0 {
-		if data, err := json.Marshal(cfg.Agents); err == nil {
-			args = append(args, "--agents", string(data))
-		}
-	}
+	// Agents are always sent via initialize request (matching Python/TypeScript SDK).
+	// No --agents CLI flag needed.
 
 	if len(cfg.Hooks) > 0 {
 		if data, err := json.Marshal(cfg.Hooks); err == nil {
@@ -201,9 +198,16 @@ func BuildArgs(cfg Config) []string {
 		}
 	}
 
-	if len(cfg.Plugins) > 0 {
-		if data, err := json.Marshal(cfg.Plugins); err == nil {
-			args = append(args, "--plugins", string(data))
+	// Plugins: each local plugin gets its own --plugin-dir flag (matching Python SDK).
+	for _, p := range cfg.Plugins {
+		if data, err := json.Marshal(p); err == nil {
+			var plugin struct {
+				Type string `json:"type"`
+				Path string `json:"path"`
+			}
+			if json.Unmarshal(data, &plugin) == nil && plugin.Type == "local" && plugin.Path != "" {
+				args = append(args, "--plugin-dir", plugin.Path)
+			}
 		}
 	}
 
@@ -211,8 +215,9 @@ func BuildArgs(cfg Config) []string {
 		args = append(args, "--betas", strings.Join(cfg.Betas, ","))
 	}
 
-	if len(cfg.AdditionalDirs) > 0 {
-		args = append(args, "--additional-directories", strings.Join(cfg.AdditionalDirs, ","))
+	// Each additional dir gets its own --add-dir flag (matching Python SDK).
+	for _, d := range cfg.AdditionalDirs {
+		args = append(args, "--add-dir", d)
 	}
 
 	if cfg.FallbackModel != "" {
@@ -231,9 +236,34 @@ func BuildArgs(cfg Config) []string {
 		args = append(args, "--strict-mcp-config")
 	}
 
+	// Sandbox is merged into --settings (matching Python SDK).
 	if cfg.Sandbox != nil {
-		if data, err := json.Marshal(cfg.Sandbox); err == nil {
-			args = append(args, "--sandbox", string(data))
+		sandboxData, _ := json.Marshal(cfg.Sandbox)
+		var sandboxMap map[string]any
+		if json.Unmarshal(sandboxData, &sandboxMap) == nil {
+			merged := map[string]any{"sandbox": sandboxMap}
+			// If settings is a JSON string, merge sandbox into it.
+			if s, ok := cfg.Settings.(string); ok && len(s) > 0 && s[0] == '{' {
+				var existing map[string]any
+				if json.Unmarshal([]byte(s), &existing) == nil {
+					existing["sandbox"] = sandboxMap
+					merged = existing
+				}
+			}
+			if data, err := json.Marshal(merged); err == nil {
+				// Replace the --settings value if already present, otherwise add it.
+				found := false
+				for i, a := range args {
+					if a == "--settings" && i+1 < len(args) {
+						args[i+1] = string(data)
+						found = true
+						break
+					}
+				}
+				if !found {
+					args = append(args, "--settings", string(data))
+				}
+			}
 		}
 	}
 
@@ -296,9 +326,8 @@ func appendTools(args []string, tools any) []string {
 
 	switch v := tools.(type) {
 	case []string:
-		if len(v) > 0 {
-			args = append(args, "--tools", strings.Join(v, ","))
-		}
+		// Empty array = "--tools ''" (disables all tools), matching Python SDK.
+		args = append(args, "--tools", strings.Join(v, ","))
 	default:
 		if data, err := json.Marshal(v); err == nil {
 			var obj struct {
@@ -307,7 +336,8 @@ func appendTools(args []string, tools any) []string {
 			}
 			if json.Unmarshal(data, &obj) == nil {
 				if obj.Preset {
-					args = append(args, "--tools-preset", "claude_code")
+					// 'claude_code' preset maps to 'default' (matching Python SDK).
+					args = append(args, "--tools", "default")
 				} else if len(obj.Names) > 0 {
 					args = append(args, "--tools", strings.Join(obj.Names, ","))
 				}
