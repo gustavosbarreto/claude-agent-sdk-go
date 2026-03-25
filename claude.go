@@ -191,19 +191,46 @@ func handleCanUseTool(mux *protocol.Mux, cfg *Config, requestID string, request 
 	}
 
 	var req struct {
-		ToolName string         `json:"tool_name"`
-		Input    map[string]any `json:"input"`
+		ToolName             string         `json:"tool_name"`
+		Input                map[string]any `json:"input"`
+		PermissionSuggestions []any         `json:"permission_suggestions"`
 	}
 	if json.Unmarshal(request, &req) != nil {
 		return mux.SendResponse(requestID, map[string]any{"behavior": "allow"})
 	}
 
-	result, err := cfg.CanUseTool(req.ToolName, req.Input, CanUseToolOptions{})
+	result, err := cfg.CanUseTool(req.ToolName, req.Input, CanUseToolOptions{
+		Suggestions: req.PermissionSuggestions,
+	})
 	if err != nil {
 		return mux.SendErrorResponse(requestID, err.Error())
 	}
 
-	return mux.SendResponse(requestID, result)
+	// Build response matching Python SDK format.
+	// Python always sends updatedInput (original input if not modified).
+	resp := map[string]any{
+		"behavior": result.Behavior,
+	}
+
+	if result.Behavior == "allow" {
+		if result.UpdatedInput != nil {
+			resp["updatedInput"] = result.UpdatedInput
+		} else {
+			resp["updatedInput"] = req.Input
+		}
+		if result.UpdatedPermissions != nil {
+			resp["updatedPermissions"] = result.UpdatedPermissions
+		}
+	} else if result.Behavior == "deny" {
+		if result.Message != "" {
+			resp["message"] = result.Message
+		}
+		if result.Interrupt {
+			resp["interrupt"] = true
+		}
+	}
+
+	return mux.SendResponse(requestID, resp)
 }
 
 // drainStderr reads stderr line by line and calls the callback per line.
