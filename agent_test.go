@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestAgentDefinition_MinimalJSON(t *testing.T) {
+func TestAgentDefinitionMinimalJSON(t *testing.T) {
 	agent := AgentDefinition{
 		Description: "A helpful agent",
 		Prompt:      "You are helpful.",
@@ -36,7 +36,7 @@ func TestAgentDefinition_MinimalJSON(t *testing.T) {
 	}
 }
 
-func TestAgentDefinition_AllFieldsJSON(t *testing.T) {
+func TestAgentDefinitionAllFieldsJSON(t *testing.T) {
 	maxTurns := 5
 	agent := AgentDefinition{
 		Description:            "Full agent",
@@ -112,7 +112,7 @@ func TestAgentDefinition_AllFieldsJSON(t *testing.T) {
 	}
 }
 
-func TestAgentDefinition_OmitsNilFields(t *testing.T) {
+func TestAgentDefinitionOmitsNilFields(t *testing.T) {
 	agent := AgentDefinition{
 		Description: "Minimal",
 		Prompt:      "Prompt only",
@@ -140,7 +140,7 @@ func TestAgentDefinition_OmitsNilFields(t *testing.T) {
 	}
 }
 
-func TestAgentDefinition_RoundTrip(t *testing.T) {
+func TestAgentDefinitionRoundTrip(t *testing.T) {
 	maxTurns := 10
 	original := AgentDefinition{
 		Description:            "Round trip test",
@@ -181,7 +181,7 @@ func TestAgentDefinition_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestAgentInfo_Fields(t *testing.T) {
+func TestAgentInfoFields(t *testing.T) {
 	info := AgentInfo{
 		Name:        "test-agent",
 		Description: "A test agent",

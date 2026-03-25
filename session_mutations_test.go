@@ -33,7 +33,7 @@ func readFileLines(t *testing.T, path string) []string {
 
 // --- RenameSession tests ---
 
-func TestRenameSession_Basic(t *testing.T) {
+func TestRenameSessionBasic(t *testing.T) {
 	projectDir := setupMutationSession(t)
 
 	err := RenameSession(testSessionID, "My Custom Title", "")
@@ -55,7 +55,7 @@ func TestRenameSession_Basic(t *testing.T) {
 	}
 }
 
-func TestRenameSession_Multiple(t *testing.T) {
+func TestRenameSessionMultiple(t *testing.T) {
 	projectDir := setupMutationSession(t)
 
 	if err := RenameSession(testSessionID, "First Title", ""); err != nil {
@@ -82,7 +82,7 @@ func TestRenameSession_Multiple(t *testing.T) {
 	}
 }
 
-func TestRenameSession_InvalidUUID(t *testing.T) {
+func TestRenameSessionInvalidUUID(t *testing.T) {
 	setupMutationSession(t)
 
 	err := RenameSession("not-a-uuid", "Title", "")
@@ -94,7 +94,7 @@ func TestRenameSession_InvalidUUID(t *testing.T) {
 	}
 }
 
-func TestRenameSession_EmptyTitle(t *testing.T) {
+func TestRenameSessionEmptyTitle(t *testing.T) {
 	setupMutationSession(t)
 
 	for _, title := range []string{"", "   ", "\t\n"} {
@@ -108,7 +108,7 @@ func TestRenameSession_EmptyTitle(t *testing.T) {
 	}
 }
 
-func TestRenameSession_NotFound(t *testing.T) {
+func TestRenameSessionNotFound(t *testing.T) {
 	setupFakeHome(t, "testproject")
 
 	err := RenameSession("00000000-0000-0000-0000-000000000000", "Title", "")
@@ -120,7 +120,7 @@ func TestRenameSession_NotFound(t *testing.T) {
 	}
 }
 
-func TestRenameSession_TrimWhitespace(t *testing.T) {
+func TestRenameSessionTrimWhitespace(t *testing.T) {
 	projectDir := setupMutationSession(t)
 
 	err := RenameSession(testSessionID, "  Trimmed Title  ", "")
@@ -138,7 +138,7 @@ func TestRenameSession_TrimWhitespace(t *testing.T) {
 
 // --- TagSession tests ---
 
-func TestTagSession_Basic(t *testing.T) {
+func TestTagSessionBasic(t *testing.T) {
 	projectDir := setupMutationSession(t)
 
 	tag := "important"
@@ -161,7 +161,7 @@ func TestTagSession_Basic(t *testing.T) {
 	}
 }
 
-func TestTagSession_ClearTag(t *testing.T) {
+func TestTagSessionClearTag(t *testing.T) {
 	projectDir := setupMutationSession(t)
 
 	err := TagSession(testSessionID, nil, "")
@@ -180,7 +180,7 @@ func TestTagSession_ClearTag(t *testing.T) {
 	}
 }
 
-func TestTagSession_InvalidUUID(t *testing.T) {
+func TestTagSessionInvalidUUID(t *testing.T) {
 	setupMutationSession(t)
 
 	tag := "test"
@@ -193,7 +193,7 @@ func TestTagSession_InvalidUUID(t *testing.T) {
 	}
 }
 
-func TestTagSession_EmptyTag(t *testing.T) {
+func TestTagSessionEmptyTag(t *testing.T) {
 	setupMutationSession(t)
 
 	tag := ""
@@ -206,7 +206,7 @@ func TestTagSession_EmptyTag(t *testing.T) {
 	}
 }
 
-func TestTagSession_Unicode(t *testing.T) {
+func TestTagSessionUnicode(t *testing.T) {
 	projectDir := setupMutationSession(t)
 
 	// Tag with zero-width characters embedded.
@@ -227,7 +227,7 @@ func TestTagSession_Unicode(t *testing.T) {
 
 // --- DeleteSession tests ---
 
-func TestDeleteSession_Basic(t *testing.T) {
+func TestDeleteSessionBasic(t *testing.T) {
 	projectDir := setupMutationSession(t)
 
 	path := filepath.Join(projectDir, testSessionID+".jsonl")
@@ -247,7 +247,7 @@ func TestDeleteSession_Basic(t *testing.T) {
 	}
 }
 
-func TestDeleteSession_NotFound(t *testing.T) {
+func TestDeleteSessionNotFound(t *testing.T) {
 	setupFakeHome(t, "testproject")
 
 	err := DeleteSession("00000000-0000-0000-0000-000000000000", "")
@@ -259,7 +259,7 @@ func TestDeleteSession_NotFound(t *testing.T) {
 	}
 }
 
-func TestDeleteSession_InvalidUUID(t *testing.T) {
+func TestDeleteSessionInvalidUUID(t *testing.T) {
 	setupMutationSession(t)
 
 	err := DeleteSession("not-valid", "")
@@ -273,7 +273,7 @@ func TestDeleteSession_InvalidUUID(t *testing.T) {
 
 // --- sanitizeUnicode tests ---
 
-func TestSanitizeUnicode_Basic(t *testing.T) {
+func TestSanitizeUnicodeBasic(t *testing.T) {
 	input := "hello world"
 	got := sanitizeUnicode(input)
 	if got != input {
@@ -281,7 +281,7 @@ func TestSanitizeUnicode_Basic(t *testing.T) {
 	}
 }
 
-func TestSanitizeUnicode_ZeroWidth(t *testing.T) {
+func TestSanitizeUnicodeZeroWidth(t *testing.T) {
 	input := "hello\u200Bworld\u200Ctest\u200Dfoo"
 	got := sanitizeUnicode(input)
 	want := "helloworldtestfoo"
@@ -290,7 +290,7 @@ func TestSanitizeUnicode_ZeroWidth(t *testing.T) {
 	}
 }
 
-func TestSanitizeUnicode_DirectionalMarks(t *testing.T) {
+func TestSanitizeUnicodeDirectionalMarks(t *testing.T) {
 	input := "hello\u202Aworld\u202Btest\u202Cfoo\u202Dbar\u202Ebaz"
 	got := sanitizeUnicode(input)
 	want := "helloworldtestfoobarbaz"
@@ -299,7 +299,7 @@ func TestSanitizeUnicode_DirectionalMarks(t *testing.T) {
 	}
 }
 
-func TestSanitizeUnicode_PrivateUse(t *testing.T) {
+func TestSanitizeUnicodePrivateUse(t *testing.T) {
 	input := "hello\uE000world\uF8FFtest"
 	got := sanitizeUnicode(input)
 	want := "helloworldtest"

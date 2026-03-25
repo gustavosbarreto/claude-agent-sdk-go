@@ -49,7 +49,7 @@ func setupFakeHome(t *testing.T, subdir string) string {
 	return projectDir
 }
 
-func TestListSessions_Empty(t *testing.T) {
+func TestListSessionsEmpty(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	_ = projectDir // dir exists but has no files
 
@@ -62,7 +62,7 @@ func TestListSessions_Empty(t *testing.T) {
 	}
 }
 
-func TestListSessions_SingleSession(t *testing.T) {
+func TestListSessionsSingleSession(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"Hello Claude"}}`,
@@ -91,7 +91,7 @@ func TestListSessions_SingleSession(t *testing.T) {
 	}
 }
 
-func TestListSessions_MultipleSessionsSortedByDate(t *testing.T) {
+func TestListSessionsMultipleSessionsSortedByDate(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"msg"}}`,
@@ -128,7 +128,7 @@ func TestListSessions_MultipleSessionsSortedByDate(t *testing.T) {
 	}
 }
 
-func TestListSessions_Limit(t *testing.T) {
+func TestListSessionsLimit(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{`{"type":"user","message":{"role":"user","content":"x"}}`}
 
@@ -148,7 +148,7 @@ func TestListSessions_Limit(t *testing.T) {
 	}
 }
 
-func TestListSessions_Offset(t *testing.T) {
+func TestListSessionsOffset(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{`{"type":"user","message":{"role":"user","content":"x"}}`}
 
@@ -168,7 +168,7 @@ func TestListSessions_Offset(t *testing.T) {
 	}
 }
 
-func TestListSessions_OffsetAndLimit(t *testing.T) {
+func TestListSessionsOffsetAndLimit(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{`{"type":"user","message":{"role":"user","content":"x"}}`}
 
@@ -193,7 +193,7 @@ func TestListSessions_OffsetAndLimit(t *testing.T) {
 	}
 }
 
-func TestListSessions_OffsetBeyondEnd(t *testing.T) {
+func TestListSessionsOffsetBeyondEnd(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{`{"type":"user","message":{"role":"user","content":"x"}}`}
 	writeSessionFile(t, projectDir, testUUID1, lines)
@@ -207,7 +207,7 @@ func TestListSessions_OffsetBeyondEnd(t *testing.T) {
 	}
 }
 
-func TestListSessions_ExtractsSummary(t *testing.T) {
+func TestListSessionsExtractsSummary(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"Hello Claude, what is 2+2?"}}`,
@@ -233,7 +233,7 @@ func TestListSessions_ExtractsSummary(t *testing.T) {
 	}
 }
 
-func TestListSessions_IgnoresNonJsonl(t *testing.T) {
+func TestListSessionsIgnoresNonJsonl(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 
 	// Write a .jsonl file and a .txt file.
@@ -254,7 +254,7 @@ func TestListSessions_IgnoresNonJsonl(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_Basic(t *testing.T) {
+func TestGetSessionMessagesBasic(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","uuid":"u1","message":{"role":"user","content":"Hello Claude"}}`,
@@ -278,7 +278,7 @@ func TestGetSessionMessages_Basic(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_FiltersSystemMessages(t *testing.T) {
+func TestGetSessionMessagesFiltersSystemMessages(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"system","uuid":"s1","subtype":"init","session_id":"` + testUUID1 + `"}`,
@@ -303,7 +303,7 @@ func TestGetSessionMessages_FiltersSystemMessages(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_LimitOffset(t *testing.T) {
+func TestGetSessionMessagesLimitOffset(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","uuid":"u1","message":{"role":"user","content":"msg1"}}`,
@@ -332,7 +332,7 @@ func TestGetSessionMessages_LimitOffset(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_NotFound(t *testing.T) {
+func TestGetSessionMessagesNotFound(t *testing.T) {
 	setupFakeHome(t, "testproject")
 
 	_, err := GetSessionMessages("00000000-0000-0000-0000-ffffffffffff", nil)
@@ -344,7 +344,7 @@ func TestGetSessionMessages_NotFound(t *testing.T) {
 	}
 }
 
-func TestGetSessionInfo_Basic(t *testing.T) {
+func TestGetSessionInfoBasic(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"What is Go?"}}`,
@@ -373,7 +373,7 @@ func TestGetSessionInfo_Basic(t *testing.T) {
 	}
 }
 
-func TestGetSessionInfo_NotFound(t *testing.T) {
+func TestGetSessionInfoNotFound(t *testing.T) {
 	setupFakeHome(t, "testproject")
 
 	_, err := GetSessionInfo("00000000-0000-0000-0000-ffffffffffff", "")
@@ -385,7 +385,7 @@ func TestGetSessionInfo_NotFound(t *testing.T) {
 	}
 }
 
-func TestExtractFirstPrompt_LongPrompt(t *testing.T) {
+func TestExtractFirstPromptLongPrompt(t *testing.T) {
 	longPrompt := strings.Repeat("a", 300)
 	head := fmt.Sprintf(`{"type":"user","message":{"role":"user","content":%q}}`, longPrompt) + "\n"
 
@@ -399,7 +399,7 @@ func TestExtractFirstPrompt_LongPrompt(t *testing.T) {
 	}
 }
 
-func TestExtractFirstPrompt_EmptyInput(t *testing.T) {
+func TestExtractFirstPromptEmptyInput(t *testing.T) {
 	result := extractFirstPrompt("")
 	if result != "" {
 		t.Errorf("expected empty, got %q", result)
@@ -420,7 +420,7 @@ func TestSessionDirForProject(t *testing.T) {
 	}
 }
 
-func TestListSessions_EmptyFileFiltered(t *testing.T) {
+func TestListSessionsEmptyFileFiltered(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Empty .jsonl file with valid UUID — should be filtered (no metadata).
 	path := filepath.Join(projectDir, "550e8400-e29b-41d4-a716-446655440000.jsonl")
@@ -435,7 +435,7 @@ func TestListSessions_EmptyFileFiltered(t *testing.T) {
 	}
 }
 
-func TestListSessions_NonUUIDFiltered(t *testing.T) {
+func TestListSessionsNonUUIDFiltered(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Non-UUID .jsonl files should be filtered.
 	lines := []string{`{"type":"user","message":{"role":"user","content":"x"}}`}
@@ -454,7 +454,7 @@ func TestListSessions_NonUUIDFiltered(t *testing.T) {
 	}
 }
 
-func TestListSessions_NoConfigDir(t *testing.T) {
+func TestListSessionsNoConfigDir(t *testing.T) {
 	// Point CLAUDE_CONFIG_DIR to a directory that does not exist.
 	t.Setenv("CLAUDE_CONFIG_DIR", "/tmp/nonexistent-config-"+fmt.Sprintf("%d", time.Now().UnixNano()))
 
@@ -467,7 +467,7 @@ func TestListSessions_NoConfigDir(t *testing.T) {
 	}
 }
 
-func TestListSessions_LimitZero(t *testing.T) {
+func TestListSessionsLimitZero(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{`{"type":"user","message":{"role":"user","content":"x"}}`}
 
@@ -488,7 +488,7 @@ func TestListSessions_LimitZero(t *testing.T) {
 	}
 }
 
-func TestListSessions_MultipleProjects(t *testing.T) {
+func TestListSessionsMultipleProjects(t *testing.T) {
 	tmpDir := t.TempDir()
 	configDir := filepath.Join(tmpDir, ".claude")
 	t.Setenv("CLAUDE_CONFIG_DIR", configDir)
@@ -521,7 +521,7 @@ func TestListSessions_MultipleProjects(t *testing.T) {
 	}
 }
 
-func TestListSessions_WithDir(t *testing.T) {
+func TestListSessionsWithDir(t *testing.T) {
 	tmpDir := t.TempDir()
 	configDir := filepath.Join(tmpDir, ".claude")
 	t.Setenv("CLAUDE_CONFIG_DIR", configDir)
@@ -551,7 +551,7 @@ func TestListSessions_WithDir(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_CorruptLines(t *testing.T) {
+func TestGetSessionMessagesCorruptLines(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`not json at all`,
@@ -578,7 +578,7 @@ func TestGetSessionMessages_CorruptLines(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_EmptyFile(t *testing.T) {
+func TestGetSessionMessagesEmptyFile(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	path := filepath.Join(projectDir, testUUID1+".jsonl")
 	os.WriteFile(path, []byte(""), 0o644)
@@ -592,7 +592,7 @@ func TestGetSessionMessages_EmptyFile(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_OffsetBeyondEnd(t *testing.T) {
+func TestGetSessionMessagesOffsetBeyondEnd(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","uuid":"u1","message":{"role":"user","content":"only one"}}`,
@@ -608,7 +608,7 @@ func TestGetSessionMessages_OffsetBeyondEnd(t *testing.T) {
 	}
 }
 
-func TestGetSessionInfo_WithDir(t *testing.T) {
+func TestGetSessionInfoWithDir(t *testing.T) {
 	tmpDir := t.TempDir()
 	configDir := filepath.Join(tmpDir, ".claude")
 	t.Setenv("CLAUDE_CONFIG_DIR", configDir)
@@ -636,7 +636,7 @@ func TestGetSessionInfo_WithDir(t *testing.T) {
 	}
 }
 
-func TestForkSession_ReturnsError(t *testing.T) {
+func TestForkSessionReturnsError(t *testing.T) {
 	_, err := ForkSession("some-session", nil)
 	if err == nil {
 		t.Fatal("expected error from ForkSession")
@@ -649,7 +649,7 @@ func TestForkSession_ReturnsError(t *testing.T) {
 	}
 }
 
-func TestExtractFirstPrompt_NonUserFirst(t *testing.T) {
+func TestExtractFirstPromptNonUserFirst(t *testing.T) {
 	head := strings.Join([]string{
 		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I am ready"}]}}`,
 		`{"type":"user","message":{"role":"user","content":"Now help me"}}`,
@@ -663,7 +663,7 @@ func TestExtractFirstPrompt_NonUserFirst(t *testing.T) {
 	}
 }
 
-func TestExtractFirstPrompt_ContentArray(t *testing.T) {
+func TestExtractFirstPromptContentArray(t *testing.T) {
 	// Content is an array with text blocks — extractFirstPrompt should extract
 	// the text from the first text block via the "text" field fallback.
 	// Use "content_block" as the block type so the first "text" match is the key we want.
@@ -676,7 +676,7 @@ func TestExtractFirstPrompt_ContentArray(t *testing.T) {
 	}
 }
 
-func TestListSessions_SubdirectoryIgnored(t *testing.T) {
+func TestListSessionsSubdirectoryIgnored(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{`{"type":"user","message":{"role":"user","content":"top level"}}`}
 	writeSessionFile(t, projectDir, testUUID1, lines)
@@ -701,7 +701,7 @@ func TestListSessions_SubdirectoryIgnored(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_ManyMessages(t *testing.T) {
+func TestGetSessionMessagesManyMessages(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	var lines []string
 	prevUUID := ""
@@ -742,7 +742,7 @@ func TestGetSessionMessages_ManyMessages(t *testing.T) {
 	}
 }
 
-func TestListSessions_NilOptions(t *testing.T) {
+func TestListSessionsNilOptions(t *testing.T) {
 	setupFakeHome(t, "testproject")
 
 	// nil options should work and use defaults.
@@ -758,7 +758,7 @@ func TestListSessions_NilOptions(t *testing.T) {
 
 // --- Helper tests ---
 
-func TestValidateUUID_Valid(t *testing.T) {
+func TestValidateUUIDValid(t *testing.T) {
 	valid := []string{
 		"00000000-0000-0000-0000-000000000000",
 		"550e8400-e29b-41d4-a716-446655440000",
@@ -771,7 +771,7 @@ func TestValidateUUID_Valid(t *testing.T) {
 	}
 }
 
-func TestValidateUUID_Invalid(t *testing.T) {
+func TestValidateUUIDInvalid(t *testing.T) {
 	invalid := []string{
 		"",
 		"not-a-uuid",
@@ -788,7 +788,7 @@ func TestValidateUUID_Invalid(t *testing.T) {
 	}
 }
 
-func TestSanitizePath_Basic(t *testing.T) {
+func TestSanitizePathBasic(t *testing.T) {
 	result := sanitizePath("/Users/foo/my-project")
 	expected := "-Users-foo-my-project"
 	if result != expected {
@@ -796,7 +796,7 @@ func TestSanitizePath_Basic(t *testing.T) {
 	}
 }
 
-func TestSanitizePath_Long(t *testing.T) {
+func TestSanitizePathLong(t *testing.T) {
 	// Build a path longer than 200 characters.
 	longPath := "/" + strings.Repeat("abcdefghij/", 25) // 275 chars
 	result := sanitizePath(longPath)
@@ -821,7 +821,7 @@ func TestSanitizePath_Long(t *testing.T) {
 	}
 }
 
-func TestSimpleHash_Deterministic(t *testing.T) {
+func TestSimpleHashDeterministic(t *testing.T) {
 	h1 := simpleHash("hello world")
 	h2 := simpleHash("hello world")
 	if h1 != h2 {
@@ -834,14 +834,14 @@ func TestSimpleHash_Deterministic(t *testing.T) {
 	}
 }
 
-func TestSimpleHash_Empty(t *testing.T) {
+func TestSimpleHashEmpty(t *testing.T) {
 	result := simpleHash("")
 	if result != "0" {
 		t.Errorf("simpleHash(\"\") = %q, want %q", result, "0")
 	}
 }
 
-func TestExtractJsonStringField_Simple(t *testing.T) {
+func TestExtractJsonStringFieldSimple(t *testing.T) {
 	text := `{"foo":"bar","baz":"qux"}`
 	result := extractJsonStringField(text, "foo")
 	if result != "bar" {
@@ -849,7 +849,7 @@ func TestExtractJsonStringField_Simple(t *testing.T) {
 	}
 }
 
-func TestExtractJsonStringField_WithSpace(t *testing.T) {
+func TestExtractJsonStringFieldWithSpace(t *testing.T) {
 	text := `{"foo": "bar"}`
 	result := extractJsonStringField(text, "foo")
 	if result != "bar" {
@@ -857,7 +857,7 @@ func TestExtractJsonStringField_WithSpace(t *testing.T) {
 	}
 }
 
-func TestExtractJsonStringField_Escaped(t *testing.T) {
+func TestExtractJsonStringFieldEscaped(t *testing.T) {
 	text := `{"foo":"bar\"baz"}`
 	result := extractJsonStringField(text, "foo")
 	expected := `bar"baz`
@@ -866,7 +866,7 @@ func TestExtractJsonStringField_Escaped(t *testing.T) {
 	}
 }
 
-func TestExtractJsonStringField_Missing(t *testing.T) {
+func TestExtractJsonStringFieldMissing(t *testing.T) {
 	text := `{"foo":"bar"}`
 	result := extractJsonStringField(text, "missing")
 	if result != "" {
@@ -884,7 +884,7 @@ func TestExtractLastJsonStringField(t *testing.T) {
 	}
 }
 
-func TestExtractFirstPrompt_Simple(t *testing.T) {
+func TestExtractFirstPromptSimple(t *testing.T) {
 	head := `{"type":"user","message":{"role":"user","content":"Hello there"}}` + "\n"
 	result := extractFirstPrompt(head)
 	if result != "Hello there" {
@@ -892,7 +892,7 @@ func TestExtractFirstPrompt_Simple(t *testing.T) {
 	}
 }
 
-func TestExtractFirstPrompt_SkipsMeta(t *testing.T) {
+func TestExtractFirstPromptSkipsMeta(t *testing.T) {
 	head := strings.Join([]string{
 		`{"type":"user","isMeta":true,"message":{"role":"user","content":"meta message"}}`,
 		`{"type":"user","message":{"role":"user","content":"real message"}}`,
@@ -903,7 +903,7 @@ func TestExtractFirstPrompt_SkipsMeta(t *testing.T) {
 	}
 }
 
-func TestExtractFirstPrompt_SkipsToolResult(t *testing.T) {
+func TestExtractFirstPromptSkipsToolResult(t *testing.T) {
 	head := strings.Join([]string{
 		`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"x","content":"result"}]}}`,
 		`{"type":"user","message":{"role":"user","content":"actual prompt"}}`,
@@ -914,7 +914,7 @@ func TestExtractFirstPrompt_SkipsToolResult(t *testing.T) {
 	}
 }
 
-func TestExtractFirstPrompt_Truncates(t *testing.T) {
+func TestExtractFirstPromptTruncates(t *testing.T) {
 	longContent := strings.Repeat("x", 250)
 	head := fmt.Sprintf(`{"type":"user","message":{"role":"user","content":"%s"}}`, longContent) + "\n"
 	result := extractFirstPrompt(head)
@@ -925,7 +925,7 @@ func TestExtractFirstPrompt_Truncates(t *testing.T) {
 
 // --- ListSessions feature tests ---
 
-func TestListSessions_CustomTitleWinsSummary(t *testing.T) {
+func TestListSessionsCustomTitleWinsSummary(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"my prompt"}}`,
@@ -946,7 +946,7 @@ func TestListSessions_CustomTitleWinsSummary(t *testing.T) {
 	}
 }
 
-func TestListSessions_SummaryWinsFirstPrompt(t *testing.T) {
+func TestListSessionsSummaryWinsFirstPrompt(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// No customTitle, but has summary field and firstPrompt.
 	// aiTitle is higher priority than lastPrompt/summary/firstPrompt per the code.
@@ -979,7 +979,7 @@ func TestListSessions_SummaryWinsFirstPrompt(t *testing.T) {
 	}
 }
 
-func TestListSessions_FiltersSidechain(t *testing.T) {
+func TestListSessionsFiltersSidechain(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// First line has isSidechain:true -> should be filtered.
 	lines := []string{
@@ -997,7 +997,7 @@ func TestListSessions_FiltersSidechain(t *testing.T) {
 	}
 }
 
-func TestListSessions_FiltersMetaOnly(t *testing.T) {
+func TestListSessionsFiltersMetaOnly(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Only isMeta messages -> no metadata extracted -> filtered by hasMetadata.
 	lines := []string{
@@ -1014,7 +1014,7 @@ func TestListSessions_FiltersMetaOnly(t *testing.T) {
 	}
 }
 
-func TestListSessions_Deduplicates(t *testing.T) {
+func TestListSessionsDeduplicates(t *testing.T) {
 	tmpDir := t.TempDir()
 	configDir := filepath.Join(tmpDir, ".claude")
 	t.Setenv("CLAUDE_CONFIG_DIR", configDir)
@@ -1047,7 +1047,7 @@ func TestListSessions_Deduplicates(t *testing.T) {
 	}
 }
 
-func TestListSessions_CwdFallbackToProjectPath(t *testing.T) {
+func TestListSessionsCwdFallbackToProjectPath(t *testing.T) {
 	tmpDir := t.TempDir()
 	configDir := filepath.Join(tmpDir, ".claude")
 	t.Setenv("CLAUDE_CONFIG_DIR", configDir)
@@ -1078,7 +1078,7 @@ func TestListSessions_CwdFallbackToProjectPath(t *testing.T) {
 	}
 }
 
-func TestListSessions_GitBranchFromTail(t *testing.T) {
+func TestListSessionsGitBranchFromTail(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Build a file large enough that head != tail (> 64KB).
 	// Instead, for small files head == tail, so the tail gitBranch will be found.
@@ -1104,7 +1104,7 @@ func TestListSessions_GitBranchFromTail(t *testing.T) {
 
 // --- GetSessionMessages chain tests ---
 
-func TestGetSessionMessages_FiltersMeta(t *testing.T) {
+func TestGetSessionMessagesFiltersMeta(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","uuid":"u1","message":{"role":"user","content":"hello"}}`,
@@ -1125,7 +1125,7 @@ func TestGetSessionMessages_FiltersMeta(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_FiltersProgress(t *testing.T) {
+func TestGetSessionMessagesFiltersProgress(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","uuid":"u1","message":{"role":"user","content":"hello"}}`,
@@ -1150,7 +1150,7 @@ func TestGetSessionMessages_FiltersProgress(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_PicksMainOverSidechain(t *testing.T) {
+func TestGetSessionMessagesPicksMainOverSidechain(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","uuid":"u1","message":{"role":"user","content":"hello"}}`,
@@ -1178,7 +1178,7 @@ func TestGetSessionMessages_PicksMainOverSidechain(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_PicksLatestLeaf(t *testing.T) {
+func TestGetSessionMessagesPicksLatestLeaf(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Two non-sidechain leaves; higher file position should win.
 	lines := []string{
@@ -1201,7 +1201,7 @@ func TestGetSessionMessages_PicksLatestLeaf(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_TerminalProgressWalkedBack(t *testing.T) {
+func TestGetSessionMessagesTerminalProgressWalkedBack(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Terminal node is a progress entry; chain should walk back to user/assistant.
 	lines := []string{
@@ -1228,7 +1228,7 @@ func TestGetSessionMessages_TerminalProgressWalkedBack(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_CycleDetection(t *testing.T) {
+func TestGetSessionMessagesCycleDetection(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Create a cycle: a1 -> u1 -> a1 (via parentUuid).
 	lines := []string{
@@ -1248,7 +1248,7 @@ func TestGetSessionMessages_CycleDetection(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_SearchAllProjects(t *testing.T) {
+func TestGetSessionMessagesSearchAllProjects(t *testing.T) {
 	tmpDir := t.TempDir()
 	configDir := filepath.Join(tmpDir, ".claude")
 	t.Setenv("CLAUDE_CONFIG_DIR", configDir)
@@ -1272,7 +1272,7 @@ func TestGetSessionMessages_SearchAllProjects(t *testing.T) {
 	}
 }
 
-func TestGetSessionMessages_IgnoresNonTranscriptTypes(t *testing.T) {
+func TestGetSessionMessagesIgnoresNonTranscriptTypes(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Entries with no uuid are skipped by chain building. summary/tag entries
 	// typically don't have uuid and should be ignored.
@@ -1298,7 +1298,7 @@ func TestGetSessionMessages_IgnoresNonTranscriptTypes(t *testing.T) {
 
 // --- Tag tests ---
 
-func TestListSessions_TagExtracted(t *testing.T) {
+func TestListSessionsTagExtracted(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"hello"}}`,
@@ -1318,7 +1318,7 @@ func TestListSessions_TagExtracted(t *testing.T) {
 	}
 }
 
-func TestListSessions_TagLastWins(t *testing.T) {
+func TestListSessionsTagLastWins(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"hello"}}`,
@@ -1340,7 +1340,7 @@ func TestListSessions_TagLastWins(t *testing.T) {
 	}
 }
 
-func TestListSessions_TagEmptyIsNone(t *testing.T) {
+func TestListSessionsTagEmptyIsNone(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"hello"}}`,
@@ -1361,7 +1361,7 @@ func TestListSessions_TagEmptyIsNone(t *testing.T) {
 	}
 }
 
-func TestListSessions_TagAbsent(t *testing.T) {
+func TestListSessionsTagAbsent(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"hello"}}`,
@@ -1383,7 +1383,7 @@ func TestListSessions_TagAbsent(t *testing.T) {
 
 // --- CreatedAt tests ---
 
-func TestListSessions_CreatedAtFromTimestamp(t *testing.T) {
+func TestListSessionsCreatedAtFromTimestamp(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Timestamp as RFC3339 in first entry.
 	lines := []string{
@@ -1407,7 +1407,7 @@ func TestListSessions_CreatedAtFromTimestamp(t *testing.T) {
 	}
 }
 
-func TestListSessions_CreatedAtMissing(t *testing.T) {
+func TestListSessionsCreatedAtMissing(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// No timestamp field.
 	lines := []string{
@@ -1427,7 +1427,7 @@ func TestListSessions_CreatedAtMissing(t *testing.T) {
 	}
 }
 
-func TestListSessions_CreatedAtInvalidFormat(t *testing.T) {
+func TestListSessionsCreatedAtInvalidFormat(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Invalid timestamp format.
 	lines := []string{
@@ -1449,7 +1449,7 @@ func TestListSessions_CreatedAtInvalidFormat(t *testing.T) {
 
 // --- GetSessionInfo tests ---
 
-func TestGetSessionInfo_IncludesTag(t *testing.T) {
+func TestGetSessionInfoIncludesTag(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"hello"}}`,
@@ -1466,7 +1466,7 @@ func TestGetSessionInfo_IncludesTag(t *testing.T) {
 	}
 }
 
-func TestGetSessionInfo_FiltersSidechain(t *testing.T) {
+func TestGetSessionInfoFiltersSidechain(t *testing.T) {
 	projectDir := setupFakeHome(t, "testproject")
 	// Sidechain session - GetSessionInfo should still return info (not filtered).
 	// Only ListSessions filters sidechains.

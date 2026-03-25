@@ -98,7 +98,7 @@ func initializeServer(t *testing.T, srv *SdkMcpServer) {
 	}
 }
 
-func TestSdkMcpServer_HandleMessage_CallTool(t *testing.T) {
+func TestSdkMcpServerHandleMessageCallTool(t *testing.T) {
 	srv := NewSdkMcpServer("test-server", SdkMcpTool{
 		Name:        "echo",
 		Description: "Echoes back the input text",
@@ -170,7 +170,7 @@ func TestSdkMcpServer_HandleMessage_CallTool(t *testing.T) {
 	}
 }
 
-func TestSdkMcpServer_HandleMessage_ToolError(t *testing.T) {
+func TestSdkMcpServerHandleMessageToolError(t *testing.T) {
 	srv := NewSdkMcpServer("test-server", SdkMcpTool{
 		Name:        "fail",
 		Description: "Always fails",
@@ -234,7 +234,7 @@ func TestSdkMcpServer_HandleMessage_ToolError(t *testing.T) {
 	}
 }
 
-func TestSdkMcpServer_HandleMessage_MultipleTools(t *testing.T) {
+func TestSdkMcpServerHandleMessageMultipleTools(t *testing.T) {
 	srv := NewSdkMcpServer("multi-server",
 		SdkMcpTool{
 			Name:        "greet",
@@ -319,7 +319,7 @@ func TestSdkMcpServer_HandleMessage_MultipleTools(t *testing.T) {
 	}
 }
 
-func TestSdkMcpServer_HandleMessage_Initialize(t *testing.T) {
+func TestSdkMcpServerHandleMessageInitialize(t *testing.T) {
 	srv := NewSdkMcpServer("init-server", SdkMcpTool{
 		Name:        "dummy",
 		Description: "Dummy tool",
@@ -387,7 +387,7 @@ func TestSdkMcpServer_HandleMessage_Initialize(t *testing.T) {
 	}
 }
 
-func TestSdkMcpServer_HandleMessage_ToolsList(t *testing.T) {
+func TestSdkMcpServerHandleMessageToolsList(t *testing.T) {
 	srv := NewSdkMcpServer("list-server",
 		SdkMcpTool{
 			Name:        "alpha",

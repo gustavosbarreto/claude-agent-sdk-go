@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestMCPServerStatus_JSON(t *testing.T) {
+func TestMCPServerStatusJSON(t *testing.T) {
 	status := MCPServerStatus{
 		Name:   "test-server",
 		Status: "connected",
@@ -49,7 +49,7 @@ func TestMCPServerStatus_JSON(t *testing.T) {
 	}
 }
 
-func TestMCPServerStatus_MinimalJSON(t *testing.T) {
+func TestMCPServerStatusMinimalJSON(t *testing.T) {
 	status := MCPServerStatus{
 		Name:   "minimal-server",
 		Status: "pending",
@@ -81,7 +81,7 @@ func TestMCPServerStatus_MinimalJSON(t *testing.T) {
 	}
 }
 
-func TestMCPServerStatus_AllStatuses(t *testing.T) {
+func TestMCPServerStatusAllStatuses(t *testing.T) {
 	statuses := []string{"connected", "failed", "needs-auth", "pending", "disabled"}
 	for _, s := range statuses {
 		status := MCPServerStatus{
@@ -105,7 +105,7 @@ func TestMCPServerStatus_AllStatuses(t *testing.T) {
 	}
 }
 
-func TestMCPServerStatus_FromSystemMessage(t *testing.T) {
+func TestMCPServerStatusFromSystemMessage(t *testing.T) {
 	line := `{"type":"system","subtype":"init","session_id":"s1","mcp_servers":[{"name":"srv","status":"connected","server_info":{"name":"srv","version":"0.1"}}]}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -137,7 +137,7 @@ func TestMCPServerStatus_FromSystemMessage(t *testing.T) {
 	}
 }
 
-func TestMCPStdioServer_MarshalJSON(t *testing.T) {
+func TestMCPStdioServerMarshalJSON(t *testing.T) {
 	srv := MCPStdioServer{
 		Command: "node",
 		Args:    []string{"server.js"},
@@ -162,7 +162,7 @@ func TestMCPStdioServer_MarshalJSON(t *testing.T) {
 	}
 }
 
-func TestMCPSSEServer_MarshalJSON(t *testing.T) {
+func TestMCPSSEServerMarshalJSON(t *testing.T) {
 	srv := MCPSSEServer{
 		URL:     "http://localhost:8080/sse",
 		Headers: map[string]string{"Authorization": "Bearer token"},
@@ -186,7 +186,7 @@ func TestMCPSSEServer_MarshalJSON(t *testing.T) {
 	}
 }
 
-func TestMCPHTTPServer_MarshalJSON(t *testing.T) {
+func TestMCPHTTPServerMarshalJSON(t *testing.T) {
 	srv := MCPHTTPServer{
 		URL: "http://localhost:9090/mcp",
 	}

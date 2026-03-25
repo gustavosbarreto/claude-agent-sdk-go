@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestHookInput_Fields(t *testing.T) {
+func TestHookInputFields(t *testing.T) {
 	input := HookInput{
 		SessionID:      "sess-123",
 		TranscriptPath: "/tmp/transcript.json",
@@ -43,7 +43,7 @@ func TestHookInput_Fields(t *testing.T) {
 	}
 }
 
-func TestHookInput_AgentFields(t *testing.T) {
+func TestHookInputAgentFields(t *testing.T) {
 	input := HookInput{
 		SessionID:     "sess-789",
 		HookEventName: "SubagentStart",
@@ -60,7 +60,7 @@ func TestHookInput_AgentFields(t *testing.T) {
 	}
 }
 
-func TestHookInput_JSON(t *testing.T) {
+func TestHookInputJSON(t *testing.T) {
 	raw := `{
 		"session_id": "s1",
 		"transcript_path": "/tmp/t.json",
@@ -92,7 +92,7 @@ func TestHookInput_JSON(t *testing.T) {
 	}
 }
 
-func TestHookOutput_AllFields(t *testing.T) {
+func TestHookOutputAllFields(t *testing.T) {
 	cont := true
 	output := HookOutput{
 		Continue:             &cont,
@@ -140,7 +140,7 @@ func TestHookOutput_AllFields(t *testing.T) {
 	}
 }
 
-func TestHookOutput_EmptyIsValid(t *testing.T) {
+func TestHookOutputEmptyIsValid(t *testing.T) {
 	output := HookOutput{}
 
 	if output.Continue != nil {
@@ -160,7 +160,7 @@ func TestHookOutput_EmptyIsValid(t *testing.T) {
 	}
 }
 
-func TestFormatHookOutput_PreToolUse(t *testing.T) {
+func TestFormatHookOutputPreToolUse(t *testing.T) {
 	output := HookOutput{
 		Decision:       "deny",
 		DecisionReason: "dangerous command",
@@ -191,7 +191,7 @@ func TestFormatHookOutput_PreToolUse(t *testing.T) {
 	}
 }
 
-func TestFormatHookOutput_PostToolUse(t *testing.T) {
+func TestFormatHookOutputPostToolUse(t *testing.T) {
 	output := HookOutput{
 		UpdatedMCPToolOutput: map[string]any{"content": "modified result"},
 	}
@@ -214,7 +214,7 @@ func TestFormatHookOutput_PostToolUse(t *testing.T) {
 	}
 }
 
-func TestFormatHookOutput_Notification(t *testing.T) {
+func TestFormatHookOutputNotification(t *testing.T) {
 	output := HookOutput{}
 
 	result := formatHookOutput(output, "Notification")
@@ -228,7 +228,7 @@ func TestFormatHookOutput_Notification(t *testing.T) {
 	}
 }
 
-func TestFormatHookOutput_StopReason(t *testing.T) {
+func TestFormatHookOutputStopReason(t *testing.T) {
 	cont := false
 	output := HookOutput{
 		Continue:   &cont,
@@ -249,7 +249,7 @@ func TestFormatHookOutput_StopReason(t *testing.T) {
 	}
 }
 
-func TestFormatHookOutput_AdditionalContext(t *testing.T) {
+func TestFormatHookOutputAdditionalContext(t *testing.T) {
 	output := HookOutput{
 		AdditionalContext: "Remember to be safe",
 	}
@@ -265,7 +265,7 @@ func TestFormatHookOutput_AdditionalContext(t *testing.T) {
 	}
 }
 
-func TestHookEvents_AllDefined(t *testing.T) {
+func TestHookEventsAllDefined(t *testing.T) {
 	// All 23 hook event constants must exist with the expected string values.
 	events := map[HookEvent]string{
 		HookPreToolUse:         "PreToolUse",
@@ -304,7 +304,7 @@ func TestHookEvents_AllDefined(t *testing.T) {
 	}
 }
 
-func TestHookInput_NotificationFields(t *testing.T) {
+func TestHookInputNotificationFields(t *testing.T) {
 	input := HookInput{
 		SessionID:        "s1",
 		HookEventName:    "Notification",
@@ -324,7 +324,7 @@ func TestHookInput_NotificationFields(t *testing.T) {
 	}
 }
 
-func TestHookInput_CompactFields(t *testing.T) {
+func TestHookInputCompactFields(t *testing.T) {
 	custom := "Be concise"
 	input := HookInput{
 		SessionID:          "s1",
@@ -345,7 +345,7 @@ func TestHookInput_CompactFields(t *testing.T) {
 	}
 }
 
-func TestHookInput_StopFields(t *testing.T) {
+func TestHookInputStopFields(t *testing.T) {
 	input := HookInput{
 		SessionID:            "s1",
 		HookEventName:        "Stop",
@@ -361,7 +361,7 @@ func TestHookInput_StopFields(t *testing.T) {
 	}
 }
 
-func TestHookInput_ElicitationFields(t *testing.T) {
+func TestHookInputElicitationFields(t *testing.T) {
 	input := HookInput{
 		SessionID:       "s1",
 		HookEventName:   "Elicitation",
@@ -384,7 +384,7 @@ func TestHookInput_ElicitationFields(t *testing.T) {
 	}
 }
 
-func TestHookOutput_ElicitationFields(t *testing.T) {
+func TestHookOutputElicitationFields(t *testing.T) {
 	output := HookOutput{
 		ElicitAction:  "submit",
 		ElicitContent: map[string]any{"name": "test"},
@@ -398,7 +398,7 @@ func TestHookOutput_ElicitationFields(t *testing.T) {
 	}
 }
 
-func TestHookOutput_PermissionDecision(t *testing.T) {
+func TestHookOutputPermissionDecision(t *testing.T) {
 	output := HookOutput{
 		PermissionDecision: &PermissionDecision{
 			Behavior:     "deny",
@@ -419,7 +419,7 @@ func TestHookOutput_PermissionDecision(t *testing.T) {
 	}
 }
 
-func TestFormatHookOutput_BlockStop(t *testing.T) {
+func TestFormatHookOutputBlockStop(t *testing.T) {
 	output := HookOutput{
 		BlockStop: true,
 	}
@@ -435,7 +435,7 @@ func TestFormatHookOutput_BlockStop(t *testing.T) {
 	}
 }
 
-func TestFormatHookOutput_SystemMessage(t *testing.T) {
+func TestFormatHookOutputSystemMessage(t *testing.T) {
 	output := HookOutput{
 		SystemMessage: "Remember the rules",
 	}
@@ -447,7 +447,7 @@ func TestFormatHookOutput_SystemMessage(t *testing.T) {
 	}
 }
 
-func TestFormatHookOutput_SuppressOutput(t *testing.T) {
+func TestFormatHookOutputSuppressOutput(t *testing.T) {
 	output := HookOutput{
 		SuppressOutput: true,
 	}

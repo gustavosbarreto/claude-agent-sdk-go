@@ -14,7 +14,7 @@ import (
 // Mock tests use shell scripts that simulate the CLI NDJSON protocol.
 // No API key or real CLI needed.
 
-func TestMock_Prompt(t *testing.T) {
+func TestPromptBasic(t *testing.T) {
 	script, err := testutil.MockStreamingCLIScript(
 		nil,
 		[][]string{
@@ -44,7 +44,7 @@ func TestMock_Prompt(t *testing.T) {
 	}
 }
 
-func TestMock_Query(t *testing.T) {
+func TestQueryBasic(t *testing.T) {
 	// Query() now always uses streaming mode (sends prompt via stdin).
 	// Use a streaming mock that responds to user messages.
 	script, err := testutil.MockStreamingCLIScript(
@@ -86,7 +86,7 @@ func TestMock_Query(t *testing.T) {
 	}
 }
 
-func TestMock_Session_MultiTurn(t *testing.T) {
+func TestSessionMultiTurn(t *testing.T) {
 	script, err := testutil.MockStreamingCLIScript(
 		[]string{testutil.SystemInit},
 		[][]string{
@@ -137,7 +137,7 @@ func TestMock_Session_MultiTurn(t *testing.T) {
 	}
 }
 
-func TestMock_Session_SessionID(t *testing.T) {
+func TestSessionSessionId(t *testing.T) {
 	// In streaming mode, the system init is emitted immediately (before any user message).
 	// But our Send() only reads after writing the user message.
 	// The system init is emitted as part of the first turn's response.
@@ -175,7 +175,7 @@ func TestMock_Session_SessionID(t *testing.T) {
 	}
 }
 
-func TestMock_ToChan(t *testing.T) {
+func TestToChan(t *testing.T) {
 	script, err := testutil.MockStreamingCLIScript(
 		nil,
 		[][]string{
@@ -207,7 +207,7 @@ func TestMock_ToChan(t *testing.T) {
 
 // --- Hook callback tests ---
 
-func TestMock_Hook_PreToolUse(t *testing.T) {
+func TestHookPreToolUseExecution(t *testing.T) {
 	// Register a PreToolUse hook, simulate the CLI sending a hook_callback
 	// control_request, verify the hook is called and the response reaches the CLI.
 	hookCalled := false
@@ -277,7 +277,7 @@ func TestMock_Hook_PreToolUse(t *testing.T) {
 	}
 }
 
-func TestMock_Hook_PostToolUse(t *testing.T) {
+func TestHookPostToolUseExecution(t *testing.T) {
 	hookCalled := false
 
 	hookFn := func(ctx context.Context, input claude.HookInput) (claude.HookOutput, error) {
@@ -336,7 +336,7 @@ func TestMock_Hook_PostToolUse(t *testing.T) {
 	}
 }
 
-func TestMock_Hook_DenyDecision(t *testing.T) {
+func TestHookDenyDecision(t *testing.T) {
 	// Hook returns a deny decision; verify the session completes (the deny
 	// response is sent back to the CLI via control_response).
 	hookFn := func(ctx context.Context, input claude.HookInput) (claude.HookOutput, error) {
@@ -397,7 +397,7 @@ func TestMock_Hook_DenyDecision(t *testing.T) {
 
 // --- CanUseTool permission callback tests ---
 
-func TestMock_CanUseTool_Allow(t *testing.T) {
+func TestPermissionCallbackAllow(t *testing.T) {
 	canUseToolCalled := false
 
 	canUseTool := func(toolName string, input map[string]any, opts claude.CanUseToolOptions) (claude.PermissionResult, error) {
@@ -453,7 +453,7 @@ func TestMock_CanUseTool_Allow(t *testing.T) {
 	}
 }
 
-func TestMock_CanUseTool_Deny(t *testing.T) {
+func TestPermissionCallbackDeny(t *testing.T) {
 	canUseTool := func(toolName string, input map[string]any, opts claude.CanUseToolOptions) (claude.PermissionResult, error) {
 		return claude.PermissionResult{
 			Behavior: "deny",
@@ -505,7 +505,7 @@ func TestMock_CanUseTool_Deny(t *testing.T) {
 
 // --- Session lifecycle tests ---
 
-func TestMock_Session_Close(t *testing.T) {
+func TestSessionClose(t *testing.T) {
 	script, err := testutil.MockStreamingCLIScript(
 		nil,
 		[][]string{
@@ -550,7 +550,7 @@ func TestMock_Session_Close(t *testing.T) {
 	t.Error("expected ErrSessionClosed after Close()")
 }
 
-func TestMock_Session_CloseTwice(t *testing.T) {
+func TestSessionCloseIdempotent(t *testing.T) {
 	script, err := testutil.MockStreamingCLIScript(
 		nil,
 		[][]string{
@@ -581,7 +581,7 @@ func TestMock_Session_CloseTwice(t *testing.T) {
 	}
 }
 
-func TestMock_Session_SendAfterClose(t *testing.T) {
+func TestSessionSendAfterClose(t *testing.T) {
 	script, err := testutil.MockStreamingCLIScript(
 		nil,
 		[][]string{
@@ -621,7 +621,7 @@ func TestMock_Session_SendAfterClose(t *testing.T) {
 	}
 }
 
-func TestMock_Session_EmptyPrompt(t *testing.T) {
+func TestSessionEmptyPrompt(t *testing.T) {
 	script, err := testutil.MockStreamingCLIScript(
 		nil,
 		[][]string{
@@ -658,7 +658,7 @@ func TestMock_Session_EmptyPrompt(t *testing.T) {
 	}
 }
 
-func TestMock_Query_AllMessageTypes(t *testing.T) {
+func TestQueryAllMessageTypes(t *testing.T) {
 	// Query that produces system(init) + assistant + result; verify all types received in order.
 	script, err := testutil.MockStreamingCLIScript(
 		nil,
@@ -706,7 +706,7 @@ func TestMock_Query_AllMessageTypes(t *testing.T) {
 	}
 }
 
-func TestMock_Query_EmptyPrompt(t *testing.T) {
+func TestQueryEmptyPrompt(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -726,7 +726,7 @@ func TestMock_Query_EmptyPrompt(t *testing.T) {
 	}
 }
 
-func TestMock_Prompt_EmptyPrompt(t *testing.T) {
+func TestPromptEmptyPrompt(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -739,7 +739,7 @@ func TestMock_Prompt_EmptyPrompt(t *testing.T) {
 	}
 }
 
-func TestMock_Session_StreamInput(t *testing.T) {
+func TestSessionStreamInput(t *testing.T) {
 	// Use StreamInput to inject an additional message during a session.
 	// The mock has 2 turns: the first is triggered by Send, the second
 	// should be triggered by StreamInput.
@@ -821,7 +821,7 @@ func TestMock_Session_StreamInput(t *testing.T) {
 	}
 }
 
-func TestMock_ToChan_WithError(t *testing.T) {
+func TestToChanWithError(t *testing.T) {
 	// ToChan should propagate errors from the iterator.
 	// Query with empty prompt yields ErrEmptyPrompt through the channel.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -228,7 +228,7 @@ func TestWithSettingSources(t *testing.T) {
 	}
 }
 
-func TestWithMultipleOptions(t *testing.T) {
+func TestWithMultipleOptionsCombined(t *testing.T) {
 	cfg := applyOptions([]Option{
 		WithModel("claude-sonnet-4-20250514"),
 		WithSystemPrompt("Be concise."),

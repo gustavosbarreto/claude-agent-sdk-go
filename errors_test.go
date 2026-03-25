@@ -23,7 +23,7 @@ func TestParseError(t *testing.T) {
 	}
 }
 
-func TestParseError_Error(t *testing.T) {
+func TestParseErrorMessage(t *testing.T) {
 	inner := fmt.Errorf("unexpected EOF")
 	pe := &ParseError{
 		Line: `{"truncated`,
@@ -37,7 +37,7 @@ func TestParseError_Error(t *testing.T) {
 	}
 }
 
-func TestParseError_Unwrap(t *testing.T) {
+func TestParseErrorUnwrap(t *testing.T) {
 	inner := fmt.Errorf("bad token")
 	pe := &ParseError{
 		Line: `not json`,
@@ -55,7 +55,7 @@ func TestParseError_Unwrap(t *testing.T) {
 	}
 }
 
-func TestErrSessionClosed(t *testing.T) {
+func TestSessionClosedError(t *testing.T) {
 	if ErrSessionClosed == nil {
 		t.Fatal("ErrSessionClosed is nil")
 	}
@@ -65,7 +65,7 @@ func TestErrSessionClosed(t *testing.T) {
 	}
 }
 
-func TestErrEmptyPrompt(t *testing.T) {
+func TestEmptyPromptError(t *testing.T) {
 	if ErrEmptyPrompt == nil {
 		t.Fatal("ErrEmptyPrompt is nil")
 	}

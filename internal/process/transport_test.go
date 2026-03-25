@@ -38,7 +38,7 @@ func flagValues(args []string, flag string) []string {
 	return vals
 }
 
-func TestBuildArgs_OneShot(t *testing.T) {
+func TestBuildCommandBasic(t *testing.T) {
 	maxTurns := 5
 	args := BuildArgs(Config{
 		Streaming: false,
@@ -69,7 +69,7 @@ func TestBuildArgs_OneShot(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_Streaming(t *testing.T) {
+func TestBuildCommandBasicStreaming(t *testing.T) {
 	args := BuildArgs(Config{
 		Streaming: true,
 		Model:     "claude-opus-4-6",
@@ -89,7 +89,7 @@ func TestBuildArgs_Streaming(t *testing.T) {
 	// --replay-user-messages is NOT sent (matching Python SDK).
 }
 
-func TestBuildArgs_BypassPermissions(t *testing.T) {
+func TestBuildCommandBypassPermissions(t *testing.T) {
 	args := BuildArgs(Config{
 		PermissionMode:                  "bypassPermissions",
 		AllowDangerouslySkipPermissions: true,
@@ -105,7 +105,7 @@ func TestBuildArgs_BypassPermissions(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_AllOptions(t *testing.T) {
+func TestBuildCommandWithOptions(t *testing.T) {
 	maxTurns := 10
 	maxBudget := 5.0
 	maxThink := 8000
@@ -183,7 +183,7 @@ func TestBuildArgs_AllOptions(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_MCPServers(t *testing.T) {
+func TestBuildCommandWithMcpServers(t *testing.T) {
 	args := BuildArgs(Config{
 		MCPServers: map[string]any{
 			"mydb": map[string]any{
@@ -202,7 +202,7 @@ func TestBuildArgs_MCPServers(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_SystemPromptString(t *testing.T) {
+func TestBuildCommandWithSystemPromptString(t *testing.T) {
 	args := BuildArgs(Config{
 		SystemPrompt: "Be helpful",
 	})
@@ -219,7 +219,7 @@ func TestBuildArgs_SystemPromptString(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_SystemPromptPreset(t *testing.T) {
+func TestBuildCommandWithSystemPromptPreset(t *testing.T) {
 	// Matching Python SDK: preset without append sends no system prompt flags.
 	args := BuildArgs(Config{
 		SystemPrompt: struct {
@@ -239,7 +239,7 @@ func TestBuildArgs_SystemPromptPreset(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_SystemPromptPresetAppend(t *testing.T) {
+func TestBuildCommandWithSystemPromptPresetAndAppend(t *testing.T) {
 	// Matching Python SDK: preset with append sends only --append-system-prompt.
 	args := BuildArgs(Config{
 		SystemPrompt: struct {
@@ -261,7 +261,7 @@ func TestBuildArgs_SystemPromptPresetAppend(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_SystemPromptEmpty(t *testing.T) {
+func TestBuildCommandWithSystemPromptEmpty(t *testing.T) {
 	// When SystemPrompt is nil, BuildArgs should still emit --system-prompt ""
 	args := BuildArgs(Config{})
 
@@ -274,7 +274,7 @@ func TestBuildArgs_SystemPromptEmpty(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_FallbackModel(t *testing.T) {
+func TestBuildCommandWithFallbackModel(t *testing.T) {
 	args := BuildArgs(Config{
 		FallbackModel: "sonnet",
 	})
@@ -288,7 +288,7 @@ func TestBuildArgs_FallbackModel(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_MaxThinkingTokens(t *testing.T) {
+func TestBuildCommandWithMaxThinkingTokens(t *testing.T) {
 	maxThink := 5000
 	args := BuildArgs(Config{
 		MaxThinkingTokens: &maxThink,
@@ -303,7 +303,7 @@ func TestBuildArgs_MaxThinkingTokens(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_SessionContinuation(t *testing.T) {
+func TestSessionContinuation(t *testing.T) {
 	args := BuildArgs(Config{
 		Continue: true,
 		Resume:   "session-123",
@@ -322,7 +322,7 @@ func TestBuildArgs_SessionContinuation(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_SettingsFile(t *testing.T) {
+func TestBuildCommandWithSettingsFile(t *testing.T) {
 	args := BuildArgs(Config{
 		Settings: "/path/to/settings.json",
 	})
@@ -336,7 +336,7 @@ func TestBuildArgs_SettingsFile(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_ExtraArgs(t *testing.T) {
+func TestBuildCommandWithExtraArgs(t *testing.T) {
 	args := BuildArgs(Config{
 		ExtraArgs: map[string]string{
 			"custom-value-flag": "myval",
@@ -365,7 +365,7 @@ func TestBuildArgs_ExtraArgs(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_ToolsArray(t *testing.T) {
+func TestBuildCommandWithToolsArray(t *testing.T) {
 	args := BuildArgs(Config{
 		Tools: []string{"Read", "Edit", "Bash"},
 	})
@@ -379,7 +379,7 @@ func TestBuildArgs_ToolsArray(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_ToolsPreset(t *testing.T) {
+func TestBuildCommandWithToolsPreset(t *testing.T) {
 	args := BuildArgs(Config{
 		Tools: struct {
 			Preset bool `json:"preset"`
@@ -395,7 +395,7 @@ func TestBuildArgs_ToolsPreset(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_ToolsEmptyArray(t *testing.T) {
+func TestBuildCommandWithToolsEmptyArray(t *testing.T) {
 	// Empty tools array emits --tools "" (disables all tools, matching Python SDK).
 	args := BuildArgs(Config{
 		Tools: []string{},
@@ -410,7 +410,7 @@ func TestBuildArgs_ToolsEmptyArray(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_ToolsNil(t *testing.T) {
+func TestBuildCommandWithoutTools(t *testing.T) {
 	// Nil tools emits nothing.
 	args := BuildArgs(Config{
 		Tools: nil,
@@ -421,7 +421,7 @@ func TestBuildArgs_ToolsNil(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_Plugins(t *testing.T) {
+func TestBuildCommandWithPlugins(t *testing.T) {
 	plugins := []any{
 		map[string]any{"type": "local", "path": "/home/user/plugins/my-plugin"},
 	}
@@ -441,7 +441,7 @@ func TestBuildArgs_Plugins(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_Betas(t *testing.T) {
+func TestBuildCommandWithBetas(t *testing.T) {
 	args := BuildArgs(Config{
 		Betas: []string{"context-1m-2025-08-07"},
 	})
@@ -455,7 +455,7 @@ func TestBuildArgs_Betas(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_AdditionalDirs(t *testing.T) {
+func TestBuildCommandWithAddDirs(t *testing.T) {
 	args := BuildArgs(Config{
 		AdditionalDirs: []string{"/home/user/dir1", "/home/user/dir2"},
 	})
@@ -476,7 +476,7 @@ func TestBuildArgs_AdditionalDirs(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_AgentsNotInArgs(t *testing.T) {
+func TestBuildCommandAgentsAlwaysViaInitialize(t *testing.T) {
 	// Agents are sent via the initialize control message, not CLI args.
 	args := BuildArgs(Config{
 		Agents: map[string]any{
@@ -493,7 +493,7 @@ func TestBuildArgs_AgentsNotInArgs(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_AlwaysStreaming(t *testing.T) {
+func TestBuildCommandAlwaysUsesStreaming(t *testing.T) {
 	// Whether Streaming is true or false, args should always include
 	// --input-format stream-json and --output-format stream-json, never --print.
 	for _, streaming := range []bool{true, false} {
@@ -521,7 +521,7 @@ func TestBuildArgs_AlwaysStreaming(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_SettingSources(t *testing.T) {
+func TestBuildCommandWithSettingSources(t *testing.T) {
 	// With specific sources.
 	args := BuildArgs(Config{
 		SettingSources: []string{"user", "project"},
@@ -545,7 +545,7 @@ func TestBuildArgs_SettingSources(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_Sandbox(t *testing.T) {
+func TestBuildCommandWithSandboxOnly(t *testing.T) {
 	sandbox := map[string]any{
 		"type":      "docker",
 		"container": "my-sandbox",
@@ -583,7 +583,7 @@ func TestBuildArgs_Sandbox(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_SandboxMergedWithSettings(t *testing.T) {
+func TestBuildCommandWithSandboxAndSettingsJson(t *testing.T) {
 	// When both Settings (as JSON string) and Sandbox are provided,
 	// sandbox is merged into the existing settings object.
 	args := BuildArgs(Config{
@@ -629,7 +629,7 @@ func TestBuildArgs_SandboxMergedWithSettings(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_SandboxMinimal(t *testing.T) {
+func TestBuildCommandSandboxMinimal(t *testing.T) {
 	// Minimal sandbox config {enabled: true} should produce --settings {"sandbox":{"enabled":true}}.
 	args := BuildArgs(Config{
 		Sandbox: map[string]any{
@@ -664,7 +664,7 @@ func TestBuildArgs_SandboxMinimal(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_OutputFormat(t *testing.T) {
+func TestBuildCommandWithOutputFormat(t *testing.T) {
 	// When OutputFormat contains a schema wrapper, --json-schema should extract the inner schema.
 	schema := map[string]any{
 		"type": "object",
@@ -697,7 +697,7 @@ func TestBuildArgs_OutputFormat(t *testing.T) {
 	}
 }
 
-func TestBuildArgs_PermissionModes(t *testing.T) {
+func TestBuildCommandWithPermissionModes(t *testing.T) {
 	tests := []struct {
 		name         string
 		mode         string

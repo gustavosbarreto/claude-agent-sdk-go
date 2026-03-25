@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestParseMessage_System(t *testing.T) {
+func TestParseSystemMessage(t *testing.T) {
 	line := `{"type":"system","subtype":"init","session_id":"abc-123","model":"claude-sonnet-4-6","cwd":"/workspace","tools":["Bash"]}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -29,7 +29,7 @@ func TestParseMessage_System(t *testing.T) {
 	}
 }
 
-func TestParseMessage_Assistant(t *testing.T) {
+func TestParseAssistantMessage(t *testing.T) {
 	line := `{"type":"assistant","uuid":"u1","message":{"role":"assistant","content":[{"type":"text","text":"Hello!"}]}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -53,7 +53,7 @@ func TestParseMessage_Assistant(t *testing.T) {
 	}
 }
 
-func TestParseMessage_Result(t *testing.T) {
+func TestParseResultMessage(t *testing.T) {
 	line := `{"type":"result","subtype":"success","result":"Done","session_id":"s1","total_cost_usd":0.05,"num_turns":3,"usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":0,"cache_read_input_tokens":80}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -83,7 +83,7 @@ func TestParseMessage_Result(t *testing.T) {
 	}
 }
 
-func TestParseMessage_User(t *testing.T) {
+func TestParseUserMessage(t *testing.T) {
 	line := `{"type":"user","message":{"role":"user","content":"hello"},"isReplay":true}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -101,7 +101,7 @@ func TestParseMessage_User(t *testing.T) {
 	}
 }
 
-func TestParseMessage_ToolProgress(t *testing.T) {
+func TestParseToolProgressMessage(t *testing.T) {
 	line := `{"type":"tool_progress","tool_use_id":"tu1","tool_name":"Bash","elapsed_time_seconds":5.2}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -122,7 +122,7 @@ func TestParseMessage_ToolProgress(t *testing.T) {
 	}
 }
 
-func TestParseMessage_RateLimit(t *testing.T) {
+func TestParseRateLimitEvent(t *testing.T) {
 	line := `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning","utilization":0.85}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -140,7 +140,7 @@ func TestParseMessage_RateLimit(t *testing.T) {
 	}
 }
 
-func TestParseMessage_PromptSuggestion(t *testing.T) {
+func TestParsePromptSuggestionMessage(t *testing.T) {
 	line := `{"type":"prompt_suggestion","suggestion":"Can you also add tests?"}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -158,7 +158,7 @@ func TestParseMessage_PromptSuggestion(t *testing.T) {
 	}
 }
 
-func TestParseMessage_ToolUseSummary(t *testing.T) {
+func TestParseToolUseSummaryMessage(t *testing.T) {
 	line := `{"type":"tool_use_summary","summary":"Read 3 files","preceding_tool_use_ids":["a","b","c"]}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -179,7 +179,7 @@ func TestParseMessage_ToolUseSummary(t *testing.T) {
 	}
 }
 
-func TestParseMessage_AuthStatus(t *testing.T) {
+func TestParseAuthStatusMessage(t *testing.T) {
 	line := `{"type":"auth_status","isAuthenticating":true,"output":["Waiting..."]}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -197,7 +197,7 @@ func TestParseMessage_AuthStatus(t *testing.T) {
 	}
 }
 
-func TestParseMessage_Unknown(t *testing.T) {
+func TestParseUnknownMessageType(t *testing.T) {
 	line := `{"type":"some_future_type","data":"hello"}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -215,7 +215,7 @@ func TestParseMessage_Unknown(t *testing.T) {
 	}
 }
 
-func TestParseMessage_Invalid(t *testing.T) {
+func TestParseInvalidJson(t *testing.T) {
 	_, err := ParseMessage([]byte("not json"))
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
@@ -230,7 +230,7 @@ func TestParseMessage_Invalid(t *testing.T) {
 	}
 }
 
-func TestParseMessage_SystemTaskNotification(t *testing.T) {
+func TestParseTaskNotificationMessage(t *testing.T) {
 	line := `{"type":"system","subtype":"task_notification","task_id":"t1","status":"completed","summary":"Done","output_file":"/tmp/out"}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -366,7 +366,7 @@ func TestErrors(t *testing.T) {
 
 // --- New edge-case and type-validation tests ---
 
-func TestParseMessage_TaskStarted(t *testing.T) {
+func TestParseTaskStartedMessage(t *testing.T) {
 	line := `{"type":"system","subtype":"task_started","session_id":"s1","task_id":"t42","description":"Run tests","tool_use_id":"tu5","task_type":"local_bash"}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -396,7 +396,7 @@ func TestParseMessage_TaskStarted(t *testing.T) {
 	}
 }
 
-func TestParseMessage_TaskProgress(t *testing.T) {
+func TestParseTaskProgressMessage(t *testing.T) {
 	line := `{"type":"system","subtype":"task_progress","session_id":"s1","task_id":"t42","description":"Still running","last_tool_name":"Bash","usage":{"total_tokens":500,"tool_uses":3,"duration_ms":12000}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -432,7 +432,7 @@ func TestParseMessage_TaskProgress(t *testing.T) {
 	}
 }
 
-func TestParseMessage_TaskNotificationCompleted(t *testing.T) {
+func TestParseTaskNotificationCompleted(t *testing.T) {
 	line := `{"type":"system","subtype":"task_notification","session_id":"s1","task_id":"t42","status":"completed","summary":"All tests passed","output_file":"/tmp/out","usage":{"total_tokens":1000,"tool_uses":5,"duration_ms":30000}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -468,7 +468,7 @@ func TestParseMessage_TaskNotificationCompleted(t *testing.T) {
 	}
 }
 
-func TestParseMessage_TaskNotificationFailed(t *testing.T) {
+func TestParseTaskNotificationFailed(t *testing.T) {
 	line := `{"type":"system","subtype":"task_notification","session_id":"s1","task_id":"t99","status":"failed","summary":"Timeout exceeded"}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -492,7 +492,7 @@ func TestParseMessage_TaskNotificationFailed(t *testing.T) {
 	}
 }
 
-func TestParseMessage_SystemUnknownSubtype(t *testing.T) {
+func TestParseSystemUnknownSubtype(t *testing.T) {
 	line := `{"type":"system","subtype":"some_future_subtype","session_id":"s1"}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -521,7 +521,7 @@ func TestParseMessage_SystemUnknownSubtype(t *testing.T) {
 	}
 }
 
-func TestParseMessage_AssistantWithThinking(t *testing.T) {
+func TestParseAssistantMessageWithThinking(t *testing.T) {
 	line := `{"type":"assistant","uuid":"u2","message":{"role":"assistant","content":[{"type":"thinking","thinking":"Let me consider...","signature":"sig123"},{"type":"text","text":"Here is my answer."}]}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -558,7 +558,7 @@ func TestParseMessage_AssistantWithThinking(t *testing.T) {
 	}
 }
 
-func TestParseMessage_AssistantWithToolUse(t *testing.T) {
+func TestParseAssistantMessageWithToolUse(t *testing.T) {
 	line := `{"type":"assistant","uuid":"u3","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu10","name":"Read","input":{"file_path":"/tmp/test.go"}}]}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -598,7 +598,7 @@ func TestParseMessage_AssistantWithToolUse(t *testing.T) {
 	}
 }
 
-func TestParseMessage_AssistantWithError(t *testing.T) {
+func TestParseAssistantMessageWithError(t *testing.T) {
 	line := `{"type":"assistant","uuid":"u4","message":{"role":"assistant","content":[]},"error":"rate_limit"}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -616,7 +616,7 @@ func TestParseMessage_AssistantWithError(t *testing.T) {
 	}
 }
 
-func TestParseMessage_ResultWithStructuredOutput(t *testing.T) {
+func TestParseResultMessageWithStructuredOutput(t *testing.T) {
 	line := `{"type":"result","subtype":"success","result":"done","session_id":"s1","total_cost_usd":0.01,"structured_output":{"key":"value","count":42}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -645,7 +645,7 @@ func TestParseMessage_ResultWithStructuredOutput(t *testing.T) {
 	}
 }
 
-func TestParseMessage_ResultErrorMaxTurns(t *testing.T) {
+func TestParseResultMessageErrorMaxTurns(t *testing.T) {
 	line := `{"type":"result","subtype":"error_max_turns","result":"","session_id":"s1","is_error":true,"num_turns":25,"total_cost_usd":1.23}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -669,7 +669,7 @@ func TestParseMessage_ResultErrorMaxTurns(t *testing.T) {
 	}
 }
 
-func TestParseMessage_ResultWithStopReason(t *testing.T) {
+func TestParseResultMessageWithStopReason(t *testing.T) {
 	line := `{"type":"result","subtype":"success","result":"Done","session_id":"s1","stop_reason":"end_turn","total_cost_usd":0.02}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -690,7 +690,7 @@ func TestParseMessage_ResultWithStopReason(t *testing.T) {
 	}
 }
 
-func TestParseMessage_ResultWithNullStopReason(t *testing.T) {
+func TestParseResultMessageWithNullStopReason(t *testing.T) {
 	line := `{"type":"result","subtype":"success","result":"Done","session_id":"s1","stop_reason":null,"total_cost_usd":0.02}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -708,7 +708,7 @@ func TestParseMessage_ResultWithNullStopReason(t *testing.T) {
 	}
 }
 
-func TestParseMessage_StreamEvent(t *testing.T) {
+func TestParseStreamEvent(t *testing.T) {
 	line := `{"type":"stream_event","uuid":"u5","session_id":"s1","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hi"}}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -740,7 +740,7 @@ func TestParseMessage_StreamEvent(t *testing.T) {
 	}
 }
 
-func TestParseMessage_UserWithToolResult(t *testing.T) {
+func TestParseUserMessageWithToolResult(t *testing.T) {
 	line := `{"type":"user","uuid":"u6","message":{"role":"user","content":"result"},"tool_use_result":{"tool_use_id":"tu1","output":"success"}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -769,7 +769,7 @@ func TestParseMessage_UserWithToolResult(t *testing.T) {
 	}
 }
 
-func TestParseMessage_SystemCompactBoundary(t *testing.T) {
+func TestParseSystemCompactBoundary(t *testing.T) {
 	line := `{"type":"system","subtype":"compact_boundary","session_id":"s1","compact_metadata":{"trigger":"auto","pre_tokens":50000}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -796,7 +796,7 @@ func TestParseMessage_SystemCompactBoundary(t *testing.T) {
 	}
 }
 
-func TestParseMessage_EmptyLine(t *testing.T) {
+func TestParseEmptyLine(t *testing.T) {
 	_, err := ParseMessage([]byte(""))
 	if err == nil {
 		t.Fatal("expected error for empty input")
@@ -811,7 +811,7 @@ func TestParseMessage_EmptyLine(t *testing.T) {
 	}
 }
 
-func TestParseMessage_MissingType(t *testing.T) {
+func TestParseMissingType(t *testing.T) {
 	line := `{"data":"hello","count":5}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -832,7 +832,7 @@ func TestParseMessage_MissingType(t *testing.T) {
 
 // --- Content block type validation tests (from test_types.py patterns) ---
 
-func TestContentBlock_Text(t *testing.T) {
+func TestTextBlock(t *testing.T) {
 	data := `{"type":"text","text":"Hello, world!"}`
 
 	var block ContentBlock
@@ -858,7 +858,7 @@ func TestContentBlock_Text(t *testing.T) {
 	}
 }
 
-func TestContentBlock_ToolUse(t *testing.T) {
+func TestToolUseBlock(t *testing.T) {
 	data := `{"type":"tool_use","id":"tu99","name":"Bash","input":{"command":"ls -la"}}`
 
 	var block ContentBlock
@@ -895,7 +895,7 @@ func TestContentBlock_ToolUse(t *testing.T) {
 	}
 }
 
-func TestContentBlock_Thinking(t *testing.T) {
+func TestThinkingBlock(t *testing.T) {
 	data := `{"type":"thinking","thinking":"I need to analyze this carefully.","signature":"abc-sig"}`
 
 	var block ContentBlock
@@ -963,7 +963,7 @@ func TestCombinedText(t *testing.T) {
 
 // --- Tests matching Python SDK's test_rate_limit_event_repro.py ---
 
-func TestParseMessage_RateLimitAllowedWarning(t *testing.T) {
+func TestParseRateLimitEventAllowedWarning(t *testing.T) {
 	line := `{"type":"rate_limit_event","session_id":"s1","rate_limit_info":{"status":"allowed_warning","resetsAt":1700000000,"rateLimitType":"token","utilization":0.92}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -1002,7 +1002,7 @@ func TestParseMessage_RateLimitAllowedWarning(t *testing.T) {
 	}
 }
 
-func TestParseMessage_RateLimitRejected(t *testing.T) {
+func TestParseRateLimitEventRejected(t *testing.T) {
 	line := `{"type":"rate_limit_event","session_id":"s2","rate_limit_info":{"status":"rejected","resetsAt":1700001000,"rateLimitType":"request","utilization":1.0}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -1035,7 +1035,7 @@ func TestParseMessage_RateLimitRejected(t *testing.T) {
 	}
 }
 
-func TestParseMessage_RateLimitMinimal(t *testing.T) {
+func TestParseRateLimitEventMinimal(t *testing.T) {
 	line := `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed"}}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -1065,7 +1065,7 @@ func TestParseMessage_RateLimitMinimal(t *testing.T) {
 	}
 }
 
-func TestParseMessage_ToolProgressWithTaskID(t *testing.T) {
+func TestParseToolProgressWithTaskId(t *testing.T) {
 	line := `{"type":"tool_progress","tool_use_id":"tu20","tool_name":"Bash","elapsed_time_seconds":10.5,"task_id":"task-abc","session_id":"s1","parent_tool_use_id":"tu19"}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -1101,7 +1101,7 @@ func TestParseMessage_ToolProgressWithTaskID(t *testing.T) {
 	}
 }
 
-func TestParseMessage_ToolUseSummaryFull(t *testing.T) {
+func TestParseToolUseSummaryFull(t *testing.T) {
 	line := `{"type":"tool_use_summary","session_id":"s1","summary":"Edited 2 files and ran tests","preceding_tool_use_ids":["tu1","tu2"]}`
 
 	msg, err := ParseMessage([]byte(line))
@@ -1134,7 +1134,7 @@ func TestParseMessage_ToolUseSummaryFull(t *testing.T) {
 	}
 }
 
-func TestParseMessage_AuthStatusFull(t *testing.T) {
+func TestParseAuthStatusFull(t *testing.T) {
 	line := `{"type":"auth_status","session_id":"s1","isAuthenticating":true,"output":["Waiting for browser...","Click approve"],"error":""}`
 
 	msg, err := ParseMessage([]byte(line))
