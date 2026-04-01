@@ -1082,8 +1082,10 @@ func TestE2E_SettingSources_Default(t *testing.T) {
 	os.WriteFile(filepath.Join(claudeDir, "settings.local.json"),
 		[]byte(`{"outputStyle": "local-test-style"}`), 0o644)
 
-	// No setting_sources — should default to no settings loaded.
-	// Matching Python: ClaudeAgentOptions(cwd=project_dir, max_turns=1)
+	// No setting_sources — CLI uses its default (loads all settings).
+	// This matches Python SDK: when setting_sources is None, the flag
+	// is omitted and the CLI decides which settings to load.
+	// To explicitly disable settings, pass an empty setting_sources.
 	session, err := claude.NewSession(ctx,
 		claude.WithCwd(projectDir),
 		claude.WithMaxTurns(1),
@@ -1104,8 +1106,10 @@ func TestE2E_SettingSources_Default(t *testing.T) {
 		}
 	}
 
-	if initMsg != nil && initMsg.OutputStyle == "local-test-style" {
-		t.Error("outputStyle should NOT be from local settings when setting_sources not set")
+	// When setting_sources is not set, CLI loads all settings by default,
+	// so local settings WILL be loaded. This matches Python SDK behavior.
+	if initMsg != nil && initMsg.OutputStyle != "local-test-style" {
+		t.Errorf("outputStyle should be from local settings when setting_sources not set (CLI default loads all), got %q", initMsg.OutputStyle)
 	}
 	if initMsg != nil {
 		t.Logf("output_style: %q", initMsg.OutputStyle)
