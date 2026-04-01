@@ -534,14 +534,11 @@ func TestBuildCommandWithSettingSources(t *testing.T) {
 		t.Errorf("expected setting sources %q, got %q", "user,project", val)
 	}
 
-	// With no sources (empty slice → empty string, meaning no settings loaded).
+	// With no sources: --setting-sources should NOT be present (Python SDK parity).
 	argsEmpty := BuildArgs(Config{})
-	valEmpty, ok := flagValue(argsEmpty, "--setting-sources")
-	if !ok {
-		t.Fatal("--setting-sources should always be present even when empty")
-	}
-	if valEmpty != "" {
-		t.Errorf("expected empty setting sources, got %q", valEmpty)
+	_, ok = flagValue(argsEmpty, "--setting-sources")
+	if ok {
+		t.Fatal("--setting-sources should not be present when empty (Python SDK parity)")
 	}
 }
 

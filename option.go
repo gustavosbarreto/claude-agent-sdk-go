@@ -48,6 +48,7 @@ type Config struct {
 	AgentProgressSummaries          bool
 	StrictMCPConfig                 bool
 	Sandbox                         *SandboxSettings
+	TaskBudget                      *int
 	SpawnProcess                    SpawnProcessFunc
 	AgentName                       string
 }
@@ -228,6 +229,11 @@ func WithMaxTurns(n int) Option {
 
 func WithMaxBudgetUSD(n float64) Option {
 	return func(c *Config) { c.MaxBudgetUSD = &n }
+}
+
+// WithTaskBudget sets the maximum token budget for background tasks.
+func WithTaskBudget(total int) Option {
+	return func(c *Config) { c.TaskBudget = &total }
 }
 
 func WithThinking(cfg ThinkingConfig) Option {

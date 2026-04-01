@@ -42,6 +42,7 @@ type Config struct {
 	Plugins                         []any
 	Betas                           []string
 	AdditionalDirs                  []string
+	TaskBudget                      *int
 	ExtraArgs                       map[string]string
 	FallbackModel                   string
 	PromptSuggestions               bool
@@ -183,9 +184,10 @@ func BuildArgs(cfg Config) []string {
 		args = append(args, "--debug")
 	}
 
-	// Always pass --setting-sources (matching Python SDK).
-	// Empty string means "load no settings" (SDK isolation mode).
-	args = append(args, "--setting-sources", strings.Join(cfg.SettingSources, ","))
+	// Only pass --setting-sources when values are configured (matching Python SDK).
+	if len(cfg.SettingSources) > 0 {
+		args = append(args, "--setting-sources", strings.Join(cfg.SettingSources, ","))
+	}
 
 	if cfg.Settings != nil {
 		switch v := cfg.Settings.(type) {
@@ -265,6 +267,10 @@ func BuildArgs(cfg Config) []string {
 				}
 			}
 		}
+	}
+
+	if cfg.TaskBudget != nil {
+		args = append(args, "--task-budget", fmt.Sprintf("%d", *cfg.TaskBudget))
 	}
 
 	if cfg.AgentName != "" {

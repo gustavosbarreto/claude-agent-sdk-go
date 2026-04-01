@@ -107,6 +107,7 @@ func toProcessConfig(cfg *Config, streaming bool) process.Config {
 		PromptSuggestions:               cfg.PromptSuggestions,
 		AgentProgressSummaries:          cfg.AgentProgressSummaries,
 		StrictMCPConfig:                 cfg.StrictMCPConfig,
+		TaskBudget:                      cfg.TaskBudget,
 		AgentName:                       cfg.AgentName,
 		ExtraArgs:                       cfg.ExtraArgs,
 	}
