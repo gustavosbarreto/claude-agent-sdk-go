@@ -709,12 +709,12 @@ func TestGetSessionMessagesManyMessages(t *testing.T) {
 		uuid := fmt.Sprintf("00000000-0000-0000-0000-%012d", i)
 		if i%2 == 0 {
 			if prevUUID == "" {
-				lines = append(lines, fmt.Sprintf(`{"type":"user","uuid":"%s","message":{"role":"user","content":"msg-%d"}}`, uuid, i))
+				lines = append(lines, fmt.Sprintf(`{"type":"user","uuid":%q,"message":{"role":"user","content":"msg-%d"}}`, uuid, i))
 			} else {
-				lines = append(lines, fmt.Sprintf(`{"type":"user","uuid":"%s","parentUuid":"%s","message":{"role":"user","content":"msg-%d"}}`, uuid, prevUUID, i))
+				lines = append(lines, fmt.Sprintf(`{"type":"user","uuid":%q,"parentUuid":%q,"message":{"role":"user","content":"msg-%d"}}`, uuid, prevUUID, i))
 			}
 		} else {
-			lines = append(lines, fmt.Sprintf(`{"type":"assistant","uuid":"%s","parentUuid":"%s","message":{"role":"assistant","content":[{"type":"text","text":"resp-%d"}]}}`, uuid, prevUUID, i))
+			lines = append(lines, fmt.Sprintf(`{"type":"assistant","uuid":%q,"parentUuid":%q,"message":{"role":"assistant","content":[{"type":"text","text":"resp-%d"}]}}`, uuid, prevUUID, i))
 		}
 		prevUUID = uuid
 	}
@@ -893,10 +893,8 @@ func TestExtractFirstPromptSimple(t *testing.T) {
 }
 
 func TestExtractFirstPromptSkipsMeta(t *testing.T) {
-	head := strings.Join([]string{
-		`{"type":"user","isMeta":true,"message":{"role":"user","content":"meta message"}}`,
-		`{"type":"user","message":{"role":"user","content":"real message"}}`,
-	}, "\n") + "\n"
+	head := `{"type":"user","isMeta":true,"message":{"role":"user","content":"meta message"}}` + "\n" +
+		`{"type":"user","message":{"role":"user","content":"real message"}}` + "\n"
 	result := extractFirstPrompt(head)
 	if result != "real message" {
 		t.Errorf("extractFirstPrompt = %q, want %q", result, "real message")
@@ -904,10 +902,8 @@ func TestExtractFirstPromptSkipsMeta(t *testing.T) {
 }
 
 func TestExtractFirstPromptSkipsToolResult(t *testing.T) {
-	head := strings.Join([]string{
-		`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"x","content":"result"}]}}`,
-		`{"type":"user","message":{"role":"user","content":"actual prompt"}}`,
-	}, "\n") + "\n"
+	head := `{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"x","content":"result"}]}}` + "\n" +
+		`{"type":"user","message":{"role":"user","content":"actual prompt"}}` + "\n"
 	result := extractFirstPrompt(head)
 	if result != "actual prompt" {
 		t.Errorf("extractFirstPrompt = %q, want %q", result, "actual prompt")
@@ -916,7 +912,7 @@ func TestExtractFirstPromptSkipsToolResult(t *testing.T) {
 
 func TestExtractFirstPromptTruncates(t *testing.T) {
 	longContent := strings.Repeat("x", 250)
-	head := fmt.Sprintf(`{"type":"user","message":{"role":"user","content":"%s"}}`, longContent) + "\n"
+	head := fmt.Sprintf(`{"type":"user","message":{"role":"user","content":%q}}`, longContent) + "\n"
 	result := extractFirstPrompt(head)
 	if len(result) != 200 {
 		t.Errorf("length = %d, want 200", len(result))

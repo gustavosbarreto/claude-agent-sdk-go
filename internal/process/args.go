@@ -245,7 +245,7 @@ func BuildArgs(cfg Config) []string {
 		if json.Unmarshal(sandboxData, &sandboxMap) == nil {
 			merged := map[string]any{"sandbox": sandboxMap}
 			// If settings is a JSON string, merge sandbox into it.
-			if s, ok := cfg.Settings.(string); ok && len(s) > 0 && s[0] == '{' {
+			if s, ok := cfg.Settings.(string); ok && s != "" && s[0] == '{' {
 				var existing map[string]any
 				if json.Unmarshal([]byte(s), &existing) == nil {
 					existing["sandbox"] = sandboxMap

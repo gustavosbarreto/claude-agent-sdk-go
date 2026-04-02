@@ -706,15 +706,16 @@ func buildConversationChain(path string) ([]SessionMessage, error) {
 	bestLeaf := leaves[0]
 	for _, l := range leaves[1:] {
 		lBetter := false
-		if bestLeaf.IsSidechain && !l.IsSidechain {
+		switch {
+		case bestLeaf.IsSidechain && !l.IsSidechain:
 			lBetter = true
-		} else if !bestLeaf.IsSidechain && l.IsSidechain {
+		case !bestLeaf.IsSidechain && l.IsSidechain:
 			lBetter = false
-		} else if bestLeaf.IsMeta && !l.IsMeta {
+		case bestLeaf.IsMeta && !l.IsMeta:
 			lBetter = true
-		} else if !bestLeaf.IsMeta && l.IsMeta {
+		case !bestLeaf.IsMeta && l.IsMeta:
 			lBetter = false
-		} else if l.filePos > bestLeaf.filePos {
+		case l.filePos > bestLeaf.filePos:
 			lBetter = true
 		}
 		if lBetter {

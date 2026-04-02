@@ -213,7 +213,8 @@ func handleCanUseTool(mux *protocol.Mux, cfg *Config, requestID string, request 
 		"behavior": result.Behavior,
 	}
 
-	if result.Behavior == "allow" {
+	switch result.Behavior {
+	case "allow":
 		if result.UpdatedInput != nil {
 			resp["updatedInput"] = result.UpdatedInput
 		} else {
@@ -222,7 +223,7 @@ func handleCanUseTool(mux *protocol.Mux, cfg *Config, requestID string, request 
 		if result.UpdatedPermissions != nil {
 			resp["updatedPermissions"] = result.UpdatedPermissions
 		}
-	} else if result.Behavior == "deny" {
+	case "deny":
 		if result.Message != "" {
 			resp["message"] = result.Message
 		}
