@@ -153,10 +153,12 @@ type AssistantMessage struct {
 	UUID      string      `json:"uuid,omitempty"`
 	SessionID string      `json:"session_id,omitempty"`
 	Message   struct {
-		Role    string          `json:"role"`
-		Content []ContentBlock  `json:"content"`
-		Model   string          `json:"model,omitempty"`
-		Usage   json.RawMessage `json:"usage,omitempty"`
+		Role       string          `json:"role"`
+		Content    []ContentBlock  `json:"content"`
+		Model      string          `json:"model,omitempty"`
+		ID         string          `json:"id,omitempty"`
+		StopReason string          `json:"stop_reason,omitempty"`
+		Usage      json.RawMessage `json:"usage,omitempty"`
 	} `json:"message"`
 	ParentToolUseID *string `json:"parent_tool_use_id,omitempty"`
 	// Error is the error type string (e.g. "authentication_failed", "rate_limit", "unknown").
