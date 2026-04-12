@@ -100,18 +100,33 @@ func BuildArgs(cfg Config) []string {
 		args = append(args, "--max-budget-usd", fmt.Sprintf("%g", *cfg.MaxBudgetUSD))
 	}
 
+	// Resolve thinking config → --thinking / --max-thinking-tokens.
+	// `thinking` takes precedence over the deprecated `max_thinking_tokens`.
+	// Matches Python SDK: adaptive → "--thinking adaptive",
+	// enabled → "--max-thinking-tokens <budget>", disabled → "--thinking disabled".
 	if cfg.Thinking != nil {
 		if data, err := json.Marshal(cfg.Thinking); err == nil {
-			args = append(args, "--thinking", string(data))
+			var t struct {
+				Type         string `json:"type"`
+				BudgetTokens int    `json:"budgetTokens"`
+			}
+			if json.Unmarshal(data, &t) == nil {
+				switch t.Type {
+				case "adaptive":
+					args = append(args, "--thinking", "adaptive")
+				case "disabled":
+					args = append(args, "--thinking", "disabled")
+				case "enabled":
+					args = append(args, "--max-thinking-tokens", fmt.Sprintf("%d", t.BudgetTokens))
+				}
+			}
 		}
+	} else if cfg.MaxThinkingTokens != nil {
+		args = append(args, "--max-thinking-tokens", fmt.Sprintf("%d", *cfg.MaxThinkingTokens))
 	}
 
 	if cfg.Effort != "" {
 		args = append(args, "--effort", cfg.Effort)
-	}
-
-	if cfg.MaxThinkingTokens != nil {
-		args = append(args, "--max-thinking-tokens", fmt.Sprintf("%d", *cfg.MaxThinkingTokens))
 	}
 
 	if cfg.IncludePartialMessages {

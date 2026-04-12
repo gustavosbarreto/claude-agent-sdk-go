@@ -62,6 +62,7 @@ const (
 	PermissionBypassPermissions PermissionMode = "bypassPermissions"
 	PermissionPlan              PermissionMode = "plan"
 	PermissionDontAsk           PermissionMode = "dontAsk"
+	PermissionAuto              PermissionMode = "auto"
 )
 
 // SystemPromptConfig holds system prompt configuration.
