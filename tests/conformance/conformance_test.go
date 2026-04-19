@@ -63,6 +63,22 @@ func TestConformance(t *testing.T) {
 					if m.Subtype != tc.ExpectSubtype {
 						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
 					}
+				case *claude.TaskStartedMessage:
+					if m.Subtype != tc.ExpectSubtype {
+						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
+					}
+				case *claude.TaskProgressMessage:
+					if m.Subtype != tc.ExpectSubtype {
+						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
+					}
+				case *claude.TaskNotificationMessage:
+					if m.Subtype != tc.ExpectSubtype {
+						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
+					}
+				case *claude.MirrorErrorMessage:
+					if m.Subtype != tc.ExpectSubtype {
+						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
+					}
 				case *claude.ResultMessage:
 					if string(m.Subtype) != tc.ExpectSubtype {
 						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
