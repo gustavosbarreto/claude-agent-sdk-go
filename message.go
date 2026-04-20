@@ -111,6 +111,23 @@ type TaskNotificationMessage struct {
 
 func (m *TaskNotificationMessage) messageType() MessageType { return MessageTypeSystem }
 
+// SessionKey identifies a session transcript or subagent transcript in a store.
+type SessionKey struct {
+	ProjectKey string `json:"project_key"`
+	SessionID  string `json:"session_id"`
+	Subpath    string `json:"subpath,omitempty"`
+}
+
+// MirrorErrorMessage is a SDK-synthesized system message (subtype "mirror_error") emitted
+// when a SessionStore.append call fails. Non-fatal — the local transcript is durable.
+type MirrorErrorMessage struct {
+	SystemMessage
+	Key   *SessionKey `json:"key,omitempty"`
+	Error string      `json:"error,omitempty"`
+}
+
+func (m *MirrorErrorMessage) messageType() MessageType { return MessageTypeSystem }
+
 // CompactMetadata is attached to compact_boundary system messages.
 type CompactMetadata struct {
 	Trigger   string `json:"trigger"` // manual, auto
@@ -153,10 +170,12 @@ type AssistantMessage struct {
 	UUID      string      `json:"uuid,omitempty"`
 	SessionID string      `json:"session_id,omitempty"`
 	Message   struct {
-		Role    string          `json:"role"`
-		Content []ContentBlock  `json:"content"`
-		Model   string          `json:"model,omitempty"`
-		Usage   json.RawMessage `json:"usage,omitempty"`
+		ID         string          `json:"id,omitempty"`
+		Role       string          `json:"role"`
+		Content    []ContentBlock  `json:"content"`
+		Model      string          `json:"model,omitempty"`
+		StopReason string          `json:"stop_reason,omitempty"`
+		Usage      json.RawMessage `json:"usage,omitempty"`
 	} `json:"message"`
 	ParentToolUseID *string `json:"parent_tool_use_id,omitempty"`
 	// Error is the error type string (e.g. "authentication_failed", "rate_limit", "unknown").
@@ -337,6 +356,12 @@ func ParseMessage(line []byte) (Message, error) {
 			return &TaskProgressMessage{SystemMessage: m}, nil
 		case "task_notification":
 			return &TaskNotificationMessage{SystemMessage: m}, nil
+		case "mirror_error":
+			var msg MirrorErrorMessage
+			if err := json.Unmarshal(line, &msg); err != nil {
+				return nil, &ParseError{Line: string(line), Err: err}
+			}
+			return &msg, nil
 		}
 		return &m, nil
 
