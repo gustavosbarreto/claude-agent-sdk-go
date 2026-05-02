@@ -58,15 +58,23 @@ func TestConformance(t *testing.T) {
 
 			// Verify subtypes for system and result messages.
 			if tc.ExpectSubtype != "" {
+				var gotSubtype string
 				switch m := msg.(type) {
 				case *claude.SystemMessage:
-					if m.Subtype != tc.ExpectSubtype {
-						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
-					}
+					gotSubtype = m.Subtype
+				case *claude.TaskStartedMessage:
+					gotSubtype = m.Subtype
+				case *claude.TaskProgressMessage:
+					gotSubtype = m.Subtype
+				case *claude.TaskNotificationMessage:
+					gotSubtype = m.Subtype
+				case *claude.MirrorErrorMessage:
+					gotSubtype = m.Subtype
 				case *claude.ResultMessage:
-					if string(m.Subtype) != tc.ExpectSubtype {
-						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
-					}
+					gotSubtype = string(m.Subtype)
+				}
+				if gotSubtype != tc.ExpectSubtype {
+					t.Errorf("subtype = %q, want %q", gotSubtype, tc.ExpectSubtype)
 				}
 			}
 		})
