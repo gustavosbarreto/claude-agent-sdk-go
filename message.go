@@ -111,6 +111,17 @@ type TaskNotificationMessage struct {
 
 func (m *TaskNotificationMessage) messageType() MessageType { return MessageTypeSystem }
 
+// MirrorErrorMessage is emitted by the SDK when a SessionStore.append call fails.
+// Non-fatal — the session continues; only the mirrored copy is missing the failed batch.
+// Parsed from system messages with subtype "mirror_error".
+type MirrorErrorMessage struct {
+	SystemMessage
+	Key   json.RawMessage `json:"key,omitempty"`
+	Error string          `json:"error,omitempty"`
+}
+
+func (m *MirrorErrorMessage) messageType() MessageType { return MessageTypeSystem }
+
 // CompactMetadata is attached to compact_boundary system messages.
 type CompactMetadata struct {
 	Trigger   string `json:"trigger"` // manual, auto
@@ -153,10 +164,12 @@ type AssistantMessage struct {
 	UUID      string      `json:"uuid,omitempty"`
 	SessionID string      `json:"session_id,omitempty"`
 	Message   struct {
-		Role    string          `json:"role"`
-		Content []ContentBlock  `json:"content"`
-		Model   string          `json:"model,omitempty"`
-		Usage   json.RawMessage `json:"usage,omitempty"`
+		Role       string          `json:"role"`
+		Content    []ContentBlock  `json:"content"`
+		Model      string          `json:"model,omitempty"`
+		Usage      json.RawMessage `json:"usage,omitempty"`
+		ID         string          `json:"id,omitempty"`
+		StopReason *string         `json:"stop_reason,omitempty"`
 	} `json:"message"`
 	ParentToolUseID *string `json:"parent_tool_use_id,omitempty"`
 	// Error is the error type string (e.g. "authentication_failed", "rate_limit", "unknown").
@@ -329,7 +342,7 @@ func ParseMessage(line []byte) (Message, error) {
 		if err := json.Unmarshal(line, &m); err != nil {
 			return nil, &ParseError{Line: string(line), Err: err}
 		}
-		// Dispatch task subtypes to dedicated types (matching Python SDK).
+		// Dispatch subtypes to dedicated types (matching Python SDK).
 		switch m.Subtype {
 		case "task_started":
 			return &TaskStartedMessage{SystemMessage: m}, nil
@@ -337,6 +350,12 @@ func ParseMessage(line []byte) (Message, error) {
 			return &TaskProgressMessage{SystemMessage: m}, nil
 		case "task_notification":
 			return &TaskNotificationMessage{SystemMessage: m}, nil
+		case "mirror_error":
+			var mm MirrorErrorMessage
+			if err := json.Unmarshal(line, &mm); err != nil {
+				return nil, &ParseError{Line: string(line), Err: err}
+			}
+			return &mm, nil
 		}
 		return &m, nil
 
