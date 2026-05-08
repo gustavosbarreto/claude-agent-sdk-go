@@ -94,6 +94,7 @@ func toProcessConfig(cfg *Config, streaming bool) process.Config {
 		Effort:                          cfg.Effort,
 		MaxThinkingTokens:               cfg.MaxThinkingTokens,
 		IncludePartialMessages:          cfg.IncludePartialMessages,
+		IncludeHookEvents:               cfg.IncludeHookEvents,
 		Resume:                          cfg.Resume,
 		ResumeAt:                        cfg.ResumeAt,
 		SessionID:                       cfg.SessionID,

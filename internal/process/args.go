@@ -24,6 +24,7 @@ type Config struct {
 	Effort                          string
 	MaxThinkingTokens               *int
 	IncludePartialMessages          bool
+	IncludeHookEvents               bool
 	MCPServers                      map[string]any
 	Agents                          map[string]any
 	Hooks                           map[string]any
@@ -116,6 +117,10 @@ func BuildArgs(cfg Config) []string {
 
 	if cfg.IncludePartialMessages {
 		args = append(args, "--include-partial-messages")
+	}
+
+	if cfg.IncludeHookEvents {
+		args = append(args, "--include-hook-events")
 	}
 
 	if len(cfg.MCPServers) > 0 {
