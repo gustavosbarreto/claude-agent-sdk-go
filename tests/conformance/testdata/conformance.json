@@ -183,6 +183,64 @@
       "expect_type": "assistant"
     },
     {
+      "name": "assistant_message_with_server_tool_use",
+      "input": {
+        "type": "assistant",
+        "message": {
+          "content": [
+            {
+              "type": "server_tool_use",
+              "id": "srvtoolu_01ABC",
+              "name": "advisor",
+              "input": {}
+            }
+          ],
+          "model": "claude-sonnet-4-5"
+        }
+      },
+      "expect_type": "assistant"
+    },
+    {
+      "name": "assistant_message_with_server_tool_result",
+      "input": {
+        "type": "assistant",
+        "message": {
+          "content": [
+            {
+              "type": "advisor_tool_result",
+              "tool_use_id": "srvtoolu_01ABC",
+              "content": {
+                "type": "advisor_result",
+                "text": "Consider edge cases around empty input."
+              }
+            }
+          ],
+          "model": "claude-sonnet-4-5"
+        }
+      },
+      "expect_type": "assistant"
+    },
+    {
+      "name": "assistant_message_with_redacted_advisor_result",
+      "input": {
+        "type": "assistant",
+        "message": {
+          "content": [
+            {
+              "type": "advisor_tool_result",
+              "tool_use_id": "srvtoolu_01ABC",
+              "content": {
+                "type": "advisor_redacted_result",
+                "encrypted_content": "EuYDCioIDhgC..."
+              }
+            }
+          ],
+          "model": "claude-sonnet-4-5"
+        }
+      },
+      "expect_type": "assistant"
+    },
+    {
       "name": "assistant_message_with_usage",
       "input": {
         "type": "assistant",
@@ -466,6 +524,216 @@
         "error": "rate_limit"
       },
       "expect_type": "assistant"
+    },
+    {
+      "name": "assistant_message_with_all_fields",
+      "input": {
+        "type": "assistant",
+        "message": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Hello"
+            }
+          ],
+          "model": "claude-sonnet-4-5-20250929",
+          "id": "msg_01HRq7YZE3apPqSHydvG77Ve",
+          "stop_reason": "end_turn",
+          "usage": {
+            "input_tokens": 10,
+            "output_tokens": 5
+          }
+        },
+        "session_id": "fdf2d90a-fd9e-4736-ae35-806edd13643f",
+        "uuid": "0dbd2453-1209-4fe9-bd51-4102f64e33df"
+      },
+      "expect_type": "assistant"
+    },
+    {
+      "name": "assistant_message_optional_fields_absent",
+      "input": {
+        "type": "assistant",
+        "message": {
+          "content": [
+            {
+              "type": "text",
+              "text": "hi"
+            }
+          ],
+          "model": "claude-opus-4-5"
+        }
+      },
+      "expect_type": "assistant"
+    },
+    {
+      "name": "result_message_with_model_usage",
+      "input": {
+        "type": "result",
+        "subtype": "success",
+        "duration_ms": 3000,
+        "duration_api_ms": 2000,
+        "is_error": false,
+        "num_turns": 1,
+        "session_id": "fdf2d90a-fd9e-4736-ae35-806edd13643f",
+        "stop_reason": "end_turn",
+        "total_cost_usd": 0.0106,
+        "usage": {
+          "input_tokens": 3,
+          "output_tokens": 24
+        },
+        "result": "Hello",
+        "modelUsage": {
+          "claude-sonnet-4-5-20250929": {
+            "inputTokens": 3,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 20012,
+            "costUSD": 0.0106,
+            "contextWindow": 200000,
+            "maxOutputTokens": 64000
+          }
+        },
+        "permission_denials": [],
+        "uuid": "d379c496-f33a-4ea4-b920-3c5483baa6f7"
+      },
+      "expect_type": "result",
+      "expect_subtype": "success"
+    },
+    {
+      "name": "result_message_optional_fields_absent",
+      "input": {
+        "type": "result",
+        "subtype": "success",
+        "duration_ms": 1000,
+        "duration_api_ms": 500,
+        "is_error": false,
+        "num_turns": 1,
+        "session_id": "session_123"
+      },
+      "expect_type": "result",
+      "expect_subtype": "success"
+    },
+    {
+      "name": "result_message_with_deferred_tool_use",
+      "input": {
+        "type": "result",
+        "subtype": "success",
+        "duration_ms": 1200,
+        "duration_api_ms": 900,
+        "is_error": false,
+        "num_turns": 1,
+        "session_id": "session_123",
+        "deferred_tool_use": {
+          "id": "toolu_01abc",
+          "name": "Bash",
+          "input": {
+            "command": "rm -rf /tmp/scratch"
+          }
+        }
+      },
+      "expect_type": "result",
+      "expect_subtype": "success"
+    },
+    {
+      "name": "result_message_with_errors",
+      "input": {
+        "type": "result",
+        "subtype": "error_during_execution",
+        "duration_ms": 5000,
+        "duration_api_ms": 3000,
+        "is_error": true,
+        "num_turns": 3,
+        "session_id": "session_456",
+        "errors": [
+          "Tool execution failed: permission denied",
+          "Unable to write to /etc/hosts"
+        ],
+        "uuid": "err-uuid-789"
+      },
+      "expect_type": "result",
+      "expect_subtype": "error_during_execution"
+    },
+    {
+      "name": "result_message_with_api_error_status",
+      "input": {
+        "type": "result",
+        "subtype": "success",
+        "duration_ms": 2000,
+        "duration_api_ms": 1500,
+        "is_error": true,
+        "num_turns": 1,
+        "session_id": "session_overload",
+        "api_error_status": 529
+      },
+      "expect_type": "result",
+      "expect_subtype": "success"
+    },
+    {
+      "name": "result_message_success_no_errors",
+      "input": {
+        "type": "result",
+        "subtype": "success",
+        "duration_ms": 1000,
+        "duration_api_ms": 500,
+        "is_error": false,
+        "num_turns": 1,
+        "session_id": "session_789",
+        "result": "Task completed successfully"
+      },
+      "expect_type": "result",
+      "expect_subtype": "success"
+    },
+    {
+      "name": "hook_event_message",
+      "input": {
+        "type": "system",
+        "subtype": "hook_started",
+        "hook_event": "PreToolUse",
+        "hook_name": "PreToolUse",
+        "session_id": "sess-123",
+        "uuid": "uuid-456",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "ls"
+        }
+      },
+      "expect_type": "system",
+      "expect_subtype": "hook_started"
+    },
+    {
+      "name": "hook_event_message_response",
+      "input": {
+        "type": "system",
+        "subtype": "hook_response",
+        "hook_event": "PostToolUse",
+        "hook_name": "PostToolUse",
+        "session_id": "sess-123",
+        "uuid": "uuid-789",
+        "output": "",
+        "exit_code": 0,
+        "outcome": "success"
+      },
+      "expect_type": "system",
+      "expect_subtype": "hook_response"
+    },
+    {
+      "name": "hook_event_message_isinstance_system",
+      "input": {
+        "type": "system",
+        "subtype": "hook_started",
+        "hook_event": "PreToolUse"
+      },
+      "expect_type": "system",
+      "expect_subtype": "hook_started"
+    },
+    {
+      "name": "hook_event_message_minimal",
+      "input": {
+        "type": "system",
+        "subtype": "hook_started",
+        "hook_name": "Stop"
+      },
+      "expect_type": "system",
+      "expect_subtype": "hook_started"
     }
   ]
 }
