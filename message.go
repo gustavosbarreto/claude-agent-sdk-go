@@ -59,14 +59,16 @@ type SystemMessage struct {
 	CompactMetadata *CompactMetadata `json:"compact_metadata,omitempty"`
 
 	// Hook subtype fields (hook_started, hook_progress, hook_response).
-	HookID    string `json:"hook_id,omitempty"`
-	HookName  string `json:"hook_name,omitempty"`
-	HookEvent string `json:"hook_event,omitempty"`
-	Stdout    string `json:"stdout,omitempty"`
-	Stderr    string `json:"stderr,omitempty"`
-	Output    string `json:"output,omitempty"`
-	ExitCode  *int   `json:"exit_code,omitempty"`
-	Outcome   string `json:"outcome,omitempty"` // success, error, canceled
+	HookID    string         `json:"hook_id,omitempty"`
+	HookName  string         `json:"hook_name,omitempty"`
+	HookEvent string         `json:"hook_event,omitempty"`
+	ToolName  string         `json:"tool_name,omitempty"`
+	ToolInput map[string]any `json:"tool_input,omitempty"`
+	Stdout    string         `json:"stdout,omitempty"`
+	Stderr    string         `json:"stderr,omitempty"`
+	Output    string         `json:"output,omitempty"`
+	ExitCode  *int           `json:"exit_code,omitempty"`
+	Outcome   string         `json:"outcome,omitempty"` // success, error, canceled
 
 	// Task subtype fields (task_started, task_progress, task_notification).
 	TaskID          string     `json:"task_id,omitempty"`
@@ -153,10 +155,12 @@ type AssistantMessage struct {
 	UUID      string      `json:"uuid,omitempty"`
 	SessionID string      `json:"session_id,omitempty"`
 	Message   struct {
-		Role    string          `json:"role"`
-		Content []ContentBlock  `json:"content"`
-		Model   string          `json:"model,omitempty"`
-		Usage   json.RawMessage `json:"usage,omitempty"`
+		ID         string          `json:"id,omitempty"`
+		Role       string          `json:"role"`
+		Content    []ContentBlock  `json:"content"`
+		Model      string          `json:"model,omitempty"`
+		StopReason string          `json:"stop_reason,omitempty"`
+		Usage      json.RawMessage `json:"usage,omitempty"`
 	} `json:"message"`
 	ParentToolUseID *string `json:"parent_tool_use_id,omitempty"`
 	// Error is the error type string (e.g. "authentication_failed", "rate_limit", "unknown").
@@ -197,8 +201,12 @@ type ResultMessage struct {
 	Usage                    *Usage           `json:"usage,omitempty"`
 	ModelUsage               map[string]ModelUsage `json:"modelUsage,omitempty"`
 	PermissionDenials        []PermissionDenial `json:"permission_denials,omitempty"`
-	StructuredOutput         json.RawMessage  `json:"structured_output,omitempty"`
-	Errors                   []string         `json:"errors,omitempty"`
+	StructuredOutput         json.RawMessage    `json:"structured_output,omitempty"`
+	DeferredToolUse          *DeferredToolUse   `json:"deferred_tool_use,omitempty"`
+	Errors                   []string           `json:"errors,omitempty"`
+	// APIErrorStatus is the HTTP status code (e.g. 429, 500, 529) of the failing
+	// API call when is_error is true. Emitted by the CLI since v2.1.110.
+	APIErrorStatus           *int               `json:"api_error_status,omitempty"`
 
 	// Legacy fields (flat token counts for backward compat).
 	CostUSD                  float64 `json:"cost_usd,omitempty"`
@@ -228,6 +236,15 @@ type ModelUsage struct {
 	CostUSD                  float64 `json:"costUSD"`
 	ContextWindow            int     `json:"contextWindow"`
 	MaxOutputTokens          int     `json:"maxOutputTokens"`
+}
+
+// DeferredToolUse is a tool call deferred by a PreToolUse hook returning "defer".
+// When a PreToolUse hook returns permissionDecision:"defer", the run stops and
+// the result message carries the deferred tool call so the caller can inspect it.
+type DeferredToolUse struct {
+	ID    string         `json:"id"`
+	Name  string         `json:"name"`
+	Input map[string]any `json:"input"`
 }
 
 // PermissionDenial records a denied tool call.
