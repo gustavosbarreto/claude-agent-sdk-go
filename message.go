@@ -59,14 +59,16 @@ type SystemMessage struct {
 	CompactMetadata *CompactMetadata `json:"compact_metadata,omitempty"`
 
 	// Hook subtype fields (hook_started, hook_progress, hook_response).
-	HookID    string `json:"hook_id,omitempty"`
-	HookName  string `json:"hook_name,omitempty"`
-	HookEvent string `json:"hook_event,omitempty"`
-	Stdout    string `json:"stdout,omitempty"`
-	Stderr    string `json:"stderr,omitempty"`
-	Output    string `json:"output,omitempty"`
-	ExitCode  *int   `json:"exit_code,omitempty"`
-	Outcome   string `json:"outcome,omitempty"` // success, error, canceled
+	HookID    string          `json:"hook_id,omitempty"`
+	HookName  string          `json:"hook_name,omitempty"`
+	HookEvent string          `json:"hook_event,omitempty"`
+	ToolName  string          `json:"tool_name,omitempty"`
+	ToolInput json.RawMessage `json:"tool_input,omitempty"`
+	Stdout    string          `json:"stdout,omitempty"`
+	Stderr    string          `json:"stderr,omitempty"`
+	Output    string          `json:"output,omitempty"`
+	ExitCode  *int            `json:"exit_code,omitempty"`
+	Outcome   string          `json:"outcome,omitempty"` // success, error, canceled
 
 	// Task subtype fields (task_started, task_progress, task_notification).
 	TaskID          string     `json:"task_id,omitempty"`
@@ -111,6 +113,22 @@ type TaskNotificationMessage struct {
 
 func (m *TaskNotificationMessage) messageType() MessageType { return MessageTypeSystem }
 
+// HookEventMessage is emitted when include_hook_events is enabled.
+// Parsed from system messages with subtype "hook_started" or "hook_response".
+type HookEventMessage struct {
+	SystemMessage
+}
+
+func (m *HookEventMessage) messageType() MessageType { return MessageTypeSystem }
+
+// MirrorErrorMessage is emitted when a SessionStore.Append call fails.
+// Parsed from system messages with subtype "mirror_error".
+type MirrorErrorMessage struct {
+	SystemMessage
+}
+
+func (m *MirrorErrorMessage) messageType() MessageType { return MessageTypeSystem }
+
 // CompactMetadata is attached to compact_boundary system messages.
 type CompactMetadata struct {
 	Trigger   string `json:"trigger"` // manual, auto
@@ -153,10 +171,12 @@ type AssistantMessage struct {
 	UUID      string      `json:"uuid,omitempty"`
 	SessionID string      `json:"session_id,omitempty"`
 	Message   struct {
-		Role    string          `json:"role"`
-		Content []ContentBlock  `json:"content"`
-		Model   string          `json:"model,omitempty"`
-		Usage   json.RawMessage `json:"usage,omitempty"`
+		ID         string          `json:"id,omitempty"`
+		Role       string          `json:"role,omitempty"`
+		Content    []ContentBlock  `json:"content"`
+		Model      string          `json:"model,omitempty"`
+		Usage      json.RawMessage `json:"usage,omitempty"`
+		StopReason *string         `json:"stop_reason,omitempty"`
 	} `json:"message"`
 	ParentToolUseID *string `json:"parent_tool_use_id,omitempty"`
 	// Error is the error type string (e.g. "authentication_failed", "rate_limit", "unknown").
@@ -181,24 +201,33 @@ type UserMessage struct {
 
 func (m *UserMessage) messageType() MessageType { return MessageTypeUser }
 
+// DeferredToolUse holds a tool call deferred by a PreToolUse hook returning "defer".
+type DeferredToolUse struct {
+	ID    string         `json:"id"`
+	Name  string         `json:"name"`
+	Input map[string]any `json:"input"`
+}
+
 // ResultMessage marks the end of a turn.
 type ResultMessage struct {
-	Type                     MessageType      `json:"type"`
-	Subtype                  ResultSubtype    `json:"subtype"`
-	UUID                     string           `json:"uuid,omitempty"`
-	SessionID                string           `json:"session_id,omitempty"`
-	Result                   string           `json:"result,omitempty"`
-	IsError                  bool             `json:"is_error"`
-	StopReason               *string          `json:"stop_reason"`
-	TotalCostUSD             float64          `json:"total_cost_usd,omitempty"`
-	DurationMS               float64          `json:"duration_ms,omitempty"`
-	DurationAPIMS            float64          `json:"duration_api_ms,omitempty"`
-	NumTurns                 int              `json:"num_turns,omitempty"`
-	Usage                    *Usage           `json:"usage,omitempty"`
+	Type                     MessageType       `json:"type"`
+	Subtype                  ResultSubtype     `json:"subtype"`
+	UUID                     string            `json:"uuid,omitempty"`
+	SessionID                string            `json:"session_id,omitempty"`
+	Result                   string            `json:"result,omitempty"`
+	IsError                  bool              `json:"is_error"`
+	StopReason               *string           `json:"stop_reason"`
+	TotalCostUSD             float64           `json:"total_cost_usd,omitempty"`
+	DurationMS               float64           `json:"duration_ms,omitempty"`
+	DurationAPIMS            float64           `json:"duration_api_ms,omitempty"`
+	NumTurns                 int               `json:"num_turns,omitempty"`
+	Usage                    *Usage            `json:"usage,omitempty"`
 	ModelUsage               map[string]ModelUsage `json:"modelUsage,omitempty"`
 	PermissionDenials        []PermissionDenial `json:"permission_denials,omitempty"`
-	StructuredOutput         json.RawMessage  `json:"structured_output,omitempty"`
-	Errors                   []string         `json:"errors,omitempty"`
+	StructuredOutput         json.RawMessage   `json:"structured_output,omitempty"`
+	Errors                   []string          `json:"errors,omitempty"`
+	DeferredToolUse          *DeferredToolUse  `json:"deferred_tool_use,omitempty"`
+	APIErrorStatus           *int              `json:"api_error_status,omitempty"`
 
 	// Legacy fields (flat token counts for backward compat).
 	CostUSD                  float64 `json:"cost_usd,omitempty"`
@@ -329,7 +358,7 @@ func ParseMessage(line []byte) (Message, error) {
 		if err := json.Unmarshal(line, &m); err != nil {
 			return nil, &ParseError{Line: string(line), Err: err}
 		}
-		// Dispatch task subtypes to dedicated types (matching Python SDK).
+		// Dispatch subtypes to dedicated types (matching Python SDK).
 		switch m.Subtype {
 		case "task_started":
 			return &TaskStartedMessage{SystemMessage: m}, nil
@@ -337,6 +366,10 @@ func ParseMessage(line []byte) (Message, error) {
 			return &TaskProgressMessage{SystemMessage: m}, nil
 		case "task_notification":
 			return &TaskNotificationMessage{SystemMessage: m}, nil
+		case "hook_started", "hook_response":
+			return &HookEventMessage{SystemMessage: m}, nil
+		case "mirror_error":
+			return &MirrorErrorMessage{SystemMessage: m}, nil
 		}
 		return &m, nil
 

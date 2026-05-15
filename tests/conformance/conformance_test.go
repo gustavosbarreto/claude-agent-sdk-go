@@ -63,6 +63,10 @@ func TestConformance(t *testing.T) {
 					if m.Subtype != tc.ExpectSubtype {
 						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
 					}
+				case *claude.HookEventMessage:
+					if m.Subtype != tc.ExpectSubtype {
+						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
+					}
 				case *claude.ResultMessage:
 					if string(m.Subtype) != tc.ExpectSubtype {
 						t.Errorf("subtype = %q, want %q", m.Subtype, tc.ExpectSubtype)
